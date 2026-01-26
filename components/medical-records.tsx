@@ -58,7 +58,7 @@ export function MedicalRecords() {
   const [filteredRecords, setFilteredRecords] = useState<MedicalRecord[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState("")
-  const [riskFilter, setRiskFilter] = useState("all")
+  const [diagnosisFilter, setDiagnosisFilter] = useState("all")
   const [dateFrom, setDateFrom] = useState("")
   const [dateTo, setDateTo] = useState("")
   const [selectedRecord, setSelectedRecord] = useState<MedicalRecord | null>(null)
@@ -133,9 +133,18 @@ export function MedicalRecords() {
       )
     }
 
-    // Risk level filter
-    if (riskFilter !== "all") {
-      filtered = filtered.filter(record => (record.risk_level || 'medium') === riskFilter)
+    // Diagnosis filter
+    if (diagnosisFilter !== "all") {
+      filtered = filtered.filter(record => {
+        if (!record.detailed_results || Object.keys(JSON.parse(record.detailed_results || '{}')).length === 0) {
+          // Records without detailed results are "General"
+          return diagnosisFilter === "general"
+        } else {
+          // Records with detailed results have badges based on the keys
+          const details = JSON.parse(record.detailed_results)
+          return Object.keys(details).includes(diagnosisFilter) || (diagnosisFilter === "general")
+        }
+      })
     }
 
     // Date range filter
@@ -155,7 +164,7 @@ export function MedicalRecords() {
     }
 
     setFilteredRecords(filtered)
-  }, [records, searchTerm, riskFilter, dateFrom, dateTo])
+  }, [records, searchTerm, diagnosisFilter, dateFrom, dateTo])
 
   const getRiskColor = (riskLevel: string | undefined) => {
     const level = riskLevel || 'medium'
@@ -187,7 +196,7 @@ export function MedicalRecords() {
 
   const clearFilters = () => {
     setSearchTerm("")
-    setRiskFilter("all")
+    setDiagnosisFilter("all")
     setDateFrom("")
     setDateTo("")
   }
@@ -383,18 +392,19 @@ export function MedicalRecords() {
               </div>
             </div>
 
-            {/* Risk Level Filter */}
+            {/* Diagnosis Filter */}
             <div className="space-y-2">
-              <Label htmlFor="risk-filter">Risk Level</Label>
-              <Select value={riskFilter} onValueChange={setRiskFilter}>
+              <Label htmlFor="diagnosis-filter">Diagnosis</Label>
+              <Select value={diagnosisFilter} onValueChange={setDiagnosisFilter}>
                 <SelectTrigger>
-                  <SelectValue placeholder="All risks" />
+                  <SelectValue placeholder="All diagnoses" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All Risk Levels</SelectItem>
-                  <SelectItem value="high">High Risk</SelectItem>
-                  <SelectItem value="medium">Medium Risk</SelectItem>
-                  <SelectItem value="low">Low Risk</SelectItem>
+                  <SelectItem value="all">All Diagnoses</SelectItem>
+                  <SelectItem value="general">General</SelectItem>
+                  <SelectItem value="cancer">Cancer</SelectItem>
+                  <SelectItem value="fatty_liver">Fatty Liver</SelectItem>
+                  <SelectItem value="hepatitis">Hepatitis</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -440,7 +450,7 @@ export function MedicalRecords() {
         <CardHeader>
           <CardTitle className="flex items-center justify-between">
             <span>Medical Records ({filteredRecords.length})</span>
-            {searchTerm || riskFilter !== "all" || dateFrom || dateTo ? (
+            {searchTerm || diagnosisFilter !== "all" || dateFrom || dateTo ? (
               <Badge variant="secondary">
                 Filtered Results
               </Badge>
@@ -460,7 +470,7 @@ export function MedicalRecords() {
                   : "Try adjusting your search terms or filters to find more records."
                 }
               </p>
-              {(searchTerm || riskFilter !== "all" || dateFrom || dateTo) && (
+              {(searchTerm || diagnosisFilter !== "all" || dateFrom || dateTo) && (
                 <Button variant="outline" onClick={clearFilters}>
                   Clear All Filters
                 </Button>
@@ -489,9 +499,13 @@ export function MedicalRecords() {
                       >
                         <td className="py-3 px-4">
                           <div className="flex items-center gap-3">
-                            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold text-sm">
-                              {record.patient_name[0].toUpperCase()}
-                            </div>
+                            {record.profile_picture ? (
+                              <img src={record.profile_picture} alt={record.patient_name} className="w-8 h-8 rounded-full object-cover" />
+                            ) : (
+                              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold text-sm">
+                                {record.patient_name[0].toUpperCase()}
+                              </div>
+                            )}
                             <span className="font-medium">{record.patient_name}</span>
                           </div>
                         </td>
@@ -575,11 +589,28 @@ export function MedicalRecords() {
               {/* Patient Info */}
               <div className="bg-blue-50 p-4 rounded-lg">
                 <h3 className="font-semibold text-blue-900 mb-3">Patient Information</h3>
-                <div className="grid grid-cols-2 gap-4 text-sm">
+                <div className="grid grid-cols-2 gap-4 text-sm mb-4">
                   <div><strong>Name:</strong> {selectedRecord.patient_name}</div>
                   <div><strong>ID:</strong> {selectedRecord.patient_id_display}</div>
-                  <div><strong>Contacts:</strong> {selectedRecord.email && `📧 ${selectedRecord.email}`} {selectedRecord.phone && `📱 ${selectedRecord.phone}`} {!selectedRecord.email && !selectedRecord.phone && 'Not provided'}</div>
-                  <div><strong>Record Date:</strong> {format(new Date(selectedRecord.created_at), 'PPP')}</div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="flex flex-col">
+                    <span className="font-semibold text-sm">Contacts:</span>
+                    <div className="mt-1 text-sm">
+                      <div>{selectedRecord.email ? `📧 ${selectedRecord.email}` : 'Not provided'}</div>
+                      <div>{selectedRecord.phone ? `📱 ${selectedRecord.phone}` : ''}</div>
+                    </div>
+                  </div>
+                  <div className="flex flex-col">
+                    <span className="font-semibold text-sm">Record Date:</span>
+                    <span className="mt-1 text-sm">
+                      {new Date(selectedRecord.created_at).toLocaleDateString('en-US', {
+                        month: 'long',
+                        day: 'numeric',
+                        year: 'numeric'
+                      })}
+                    </span>
+                  </div>
                 </div>
               </div>
 
@@ -764,26 +795,26 @@ export function MedicalRecords() {
                             <AlertCircle className="h-4 w-4 text-red-600" />}
                         </div>
                         <div>
-                          <p className="font-semibold text-sm">Grade {selectedDetail.data.grade ?? 0} ({selectedDetail.data.grade_description || 'Unknown'})</p>
-                          <p className="text-xs text-muted-foreground">Fatty Liver Assessment</p>
+                          <p className="font-semibold text-sm">{selectedDetail.data.diagnosis || 'Fatty Liver Assessment'}</p>
+                          <p className="text-xs text-muted-foreground">Risk Assessment</p>
                         </div>
                       </div>
                       <Badge variant="outline" className={
-                        (selectedDetail.data.grade === 0 || selectedDetail.data.grade === 1) ? "bg-green-100 text-green-800 border-green-200" :
-                        selectedDetail.data.grade === 2 ? "bg-yellow-100 text-yellow-800 border-yellow-200" :
+                        selectedDetail.data.confidence <= 30 ? "bg-green-100 text-green-800 border-green-200" :
+                        selectedDetail.data.confidence <= 60 ? "bg-yellow-100 text-yellow-800 border-yellow-200" :
                         "bg-red-100 text-red-800 border-red-200"
                       } style={{ fontWeight: 'bold', fontSize: '12px' }}>
-                        Grade {selectedDetail.data.grade ?? 0}
+                        {(selectedDetail.data.confidence ?? 0).toFixed(1)}% Risk
                       </Badge>
                     </div>
                     <div className="grid grid-cols-2 gap-4 text-sm">
                       <div>
-                        <p className="font-medium">Progression Risk</p>
-                        <p className="text-muted-foreground">{selectedDetail.data.progression_risk ?? 0}%</p>
+                        <p className="font-medium">Injury Confidence</p>
+                        <p className="text-muted-foreground">{(selectedDetail.data.confidence ?? 0).toFixed(1)}%</p>
                       </div>
                       <div>
-                        <p className="font-medium">Complications Risk</p>
-                        <p className="text-muted-foreground">{selectedDetail.data.complications_risk ?? 0}%</p>
+                        <p className="font-medium">Status</p>
+                        <p className="text-muted-foreground">{selectedDetail.data.has_fatty_liver ? 'Detected' : 'Not Detected'}</p>
                       </div>
                     </div>
                     <p className="text-sm text-muted-foreground">{selectedDetail.data.advice || "No advice available"}</p>

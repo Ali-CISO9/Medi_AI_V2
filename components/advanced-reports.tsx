@@ -4207,20 +4207,6 @@ export function AdvancedReports({ className }: AdvancedReportsProps) {
                 </div>
               )}
 
-              {/* Next Appointment */}
-              {selectedCase.nextAppointment && (
-                <div>
-                  <h3 className="text-lg font-semibold mb-3">Next Appointment</h3>
-                  <div className="bg-green-50 border border-green-200 rounded-lg p-3">
-                    <div className="flex items-center gap-2">
-                      <CalendarIcon className="h-4 w-4 text-green-600" />
-                      <span className="text-sm text-green-800">
-                        {selectedCase.nextAppointment.toLocaleDateString()} at {selectedCase.nextAppointment.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              )}
 
               {/* Notes Section in Case Details */}
               {selectedCase?.notes && (
