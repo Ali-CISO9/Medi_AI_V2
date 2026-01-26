@@ -142,11 +142,21 @@ export function HepatitisInput({ gateData, onAnalysisComplete, presetData }: Hep
     setIsAnalyzing(true)
 
     try {
-      // Merge hepatitis form data with gate data
+      // Map gate data to backend's expected short key names
+      const mappedGateData = {
+        bilirubin: gateData.total_bilirubin,
+        alp: gateData.alkaline_phosphotase,
+        ast: gateData.aspartate_aminotransferase,
+        albumin: gateData.albumin,
+        age: gateData.age,
+        gender: gateData.gender,
+      }
+
+      // Merge mapped gate data with hepatitis form data
       const payload = {
         mode: 'hepatitis',
         user_profile: {
-          ...gateData,
+          ...mappedGateData,
           ...hepatitisForm,
           // Convert string numbers to numbers for backend
           platelets: Number(hepatitisForm.platelets),

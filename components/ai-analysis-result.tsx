@@ -11,11 +11,11 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useAnalysis } from "@/lib/analysis-context"
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { toast } from 'sonner'
 
 export function AiAnalysisResult() {
-  const { result, input, reset, resetAll } = useAnalysis()
+  const { result, input, analysisOrder, reset, resetAll } = useAnalysis()
   const [isPatientFormOpen, setIsPatientFormOpen] = useState(false)
   const [filterOptions, setFilterOptions] = useState({
     showHepatitis: true,
@@ -65,6 +65,7 @@ export function AiAnalysisResult() {
   }, [result])
 
 
+
   const handleReset = () => {
     // Reset analysis context
     resetAll()
@@ -102,6 +103,12 @@ export function AiAnalysisResult() {
     }
   }
 
+  const getHepatitisStageColor = (stage: number) => {
+    if (stage === 0 || stage === 1) return "bg-green-100 text-green-800 border-green-200"
+    if (stage === 2) return "bg-yellow-100 text-yellow-800 border-yellow-200"
+    return "bg-red-100 text-red-800 border-red-200" // Stage 3 or 4
+  }
+
   const getRiskIcon = (risk: number, type: 'hepatitis' | 'cancer' | 'fattyLiver') => {
     if (type === 'cancer') {
       if (risk <= 10) return <CheckCircle2 className="h-4 w-4 text-green-600" />
@@ -111,6 +118,22 @@ export function AiAnalysisResult() {
       if (risk >= 80) return <CheckCircle2 className="h-4 w-4 text-green-600" />
       if (risk >= 60) return <AlertCircle className="h-4 w-4 text-yellow-600" />
       return <AlertCircle className="h-4 w-4 text-red-600" />
+    }
+  }
+
+  const getFattyLiverStatusIcon = (diagnosis: string) => {
+    if (diagnosis.toLowerCase().includes('healthy')) {
+      return <CheckCircle2 className="h-4 w-4 text-green-600" />
+    } else {
+      return <AlertCircle className="h-4 w-4 text-red-600" />
+    }
+  }
+
+  const getFattyLiverStatusColor = (diagnosis: string) => {
+    if (diagnosis.toLowerCase().includes('healthy')) {
+      return "bg-green-100 text-green-800 border-green-200"
+    } else {
+      return "bg-red-100 text-red-800 border-red-200"
     }
   }
 
@@ -277,37 +300,37 @@ export function AiAnalysisResult() {
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4 flex-1">
-        {isMultiModelResult ? (
-          <>
-            {/* Gate Status Banner */}
-            <div className={`rounded-xl p-4 md:p-5 animate-in slide-in-from-top-4 duration-300 ${
-              (result as any).gate_prediction === 1
-                ? 'bg-green-50 border border-green-200 dark:bg-green-950 dark:border-green-800'
-                : 'bg-red-50 border border-red-200 dark:bg-red-950 dark:border-red-800'
-            }`}>
-              <div className="flex items-center gap-3">
-                <div className={`flex h-8 w-8 items-center justify-center rounded-lg ${
-                  (result as any).gate_prediction === 1 ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600'
-                }`}>
-                  {(result as any).gate_prediction === 1 ? (
-                    <CheckCircle2 className="h-5 w-5" />
-                  ) : (
-                    <AlertCircle className="h-5 w-5" />
-                  )}
+        {/* General Test Result - Only show for healthy patients */}
+        {result && result.gate_prediction === 1 && (
+          <Card className="gradient-card">
+            <CardHeader>
+              <CardTitle className="text-base md:text-lg flex items-center gap-2">
+                <div className="w-3 h-3 rounded-full bg-green-500"></div>
+                General Test Result
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="font-medium">Diagnosis:</span>
+                  <span className="px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
+                    {(result as any).diagnosis || 'Healthy'}
+                  </span>
                 </div>
-                <div>
-                  <h3 className={`text-lg font-semibold ${
-                    (result as any).gate_prediction === 1 ? 'text-green-800 dark:text-green-200' : 'text-red-800 dark:text-red-200'
-                  }`}>
-                    {(result as any).gate_prediction === 1 ? 'Healthy Patient' : 'High Risk Detected - Comprehensive Analysis Below'}
-                  </h3>
-                  <p className="text-sm text-muted-foreground">
-                    Gate Model Assessment: {(result as any).gate_prediction === 1 ? 'Normal Liver Function' : 'Abnormal Findings - Sub-models Activated'}
-                  </p>
+                <div className="flex items-center justify-between">
+                  <span className="font-medium">Confidence:</span>
+                  <span className="text-sm">{(result as any).confidence ?? 0}%</span>
+                </div>
+                <div className="pt-2 border-t">
+                  <p className="text-sm text-muted-foreground">{((result as any).advice || 'Maintain your current healthy lifestyle.').replace('Gate screening', 'General Test')}</p>
                 </div>
               </div>
-            </div>
+            </CardContent>
+          </Card>
+        )}
 
+        {isMultiModelResult ? (
+          <>
             {/* Filter Toolbar - Only show if Gate detected risk */}
             {(result as any).gate_prediction === 0 && (
               <div className="rounded-xl gradient-card p-4 animate-in slide-in-from-left-4 duration-300 delay-200">
@@ -347,115 +370,125 @@ export function AiAnalysisResult() {
             {/* Result Stack - Only show if Gate detected risk */}
             {(result as any).gate_prediction === 0 && (
               <div className="space-y-4">
-                {/* Hepatitis Card */}
-                {filterOptions.showHepatitis && (result as any).results.hepatitis && (
-                  <div className="rounded-xl gradient-card p-4 md:p-5 animate-in slide-in-from-left-4 duration-300 hover-lift">
-                    <div className="flex items-center gap-3 mb-3">
-                      <div className="flex h-8 w-8 items-center justify-center rounded-lg gradient-primary animate-glow">
-                        <Activity className="h-4 w-4 text-primary-foreground" />
-                      </div>
-                      <h3 className="text-lg font-semibold gradient-text">Hepatitis Analysis</h3>
-                    </div>
-                    <div className="space-y-3">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                          <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-background/50">
-                            {getRiskIcon((result as any).results.hepatitis.confidence, 'hepatitis')}
+                {analysisOrder.map((analysisType, index) => {
+                  // Hepatitis Card
+                  if (analysisType === 'hepatitis' && filterOptions.showHepatitis && (result as any).results.hepatitis) {
+                    return (
+                      <div key="hepatitis" className="rounded-xl gradient-card p-4 md:p-5 animate-in slide-in-from-left-4 duration-300 hover-lift">
+                        <div className="flex items-center gap-3 mb-3">
+                          <div className="flex h-8 w-8 items-center justify-center rounded-lg gradient-primary animate-glow">
+                            <Activity className="h-4 w-4 text-primary-foreground" />
                           </div>
-                          <div>
-                            <p className="font-semibold text-sm">Stage {(result as any).results.hepatitis.stage} ({(result as any).results.hepatitis.stage_description})</p>
-                            <p className="text-xs text-muted-foreground">Fibrosis Assessment</p>
+                          <h3 className="text-lg font-semibold gradient-text">Hepatitis Analysis</h3>
+                        </div>
+                        <div className="space-y-3">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                              <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-background/50">
+                                {getRiskIcon((result as any).results.hepatitis.confidence ?? 0, 'hepatitis')}
+                              </div>
+                              <div>
+                                <p className="font-semibold text-sm">Stage {(result as any).results.hepatitis.stage ?? 0} ({(result as any).results.hepatitis.stage_description || 'Unknown'})</p>
+                                <p className="text-xs text-muted-foreground">Fibrosis Assessment</p>
+                              </div>
+                            </div>
+                            <Badge variant="outline" className={`${getHepatitisStageColor((result as any).results.hepatitis.stage ?? 0)} font-semibold text-xs`}>
+                              Stage {(result as any).results.hepatitis.stage ?? 0}
+                            </Badge>
                           </div>
-                        </div>
-                        <Badge variant="outline" className={`${getRiskColor((result as any).results.hepatitis.confidence, 'hepatitis')} font-semibold text-xs`}>
-                          Stage {(result as any).results.hepatitis.stage}
-                        </Badge>
-                      </div>
-                      <div className="grid grid-cols-2 gap-4 text-sm">
-                        <div>
-                          <p className="font-medium">Complications Risk</p>
-                          <p className="text-muted-foreground">{(result as any).results.hepatitis.complications_risk}%</p>
-                        </div>
-                        <div>
-                          <p className="font-medium">Mortality Risk</p>
-                          <p className="text-muted-foreground">{(result as any).results.hepatitis.mortality_risk}%</p>
-                        </div>
-                      </div>
-                      <div className="border-t pt-3">
-                        <p className="text-xs font-medium mb-2">Liver Function Scores</p>
-                        <div className="grid grid-cols-2 gap-4 text-xs">
-                          <div>
-                            <p className="font-medium">APRI Score</p>
-                            <p className="text-muted-foreground">{(result as any).results.hepatitis.apri_score?.toFixed(2) || 'N/A'}</p>
+                          <div className="grid grid-cols-2 gap-4 text-sm">
+                            <div>
+                              <p className="font-medium">Complications Risk</p>
+                              <p className="text-muted-foreground">{(result as any).results.hepatitis.complications_risk ?? 0}%</p>
+                            </div>
+                            <div>
+                              <p className="font-medium">Mortality Risk</p>
+                              <p className="text-muted-foreground">{(result as any).results.hepatitis.mortality_risk ?? 0}%</p>
+                            </div>
                           </div>
-                          <div>
-                            <p className="font-medium">ALBI Score</p>
-                            <p className="text-muted-foreground">{(result as any).results.hepatitis.albi_score?.toFixed(2) || 'N/A'}</p>
+                          <div className="border-t pt-3">
+                            <p className="text-xs font-medium mb-2">Liver Function Scores</p>
+                            <div className="grid grid-cols-2 gap-4 text-xs">
+                              <div>
+                                <p className="font-medium">APRI Score</p>
+                                <p className="text-muted-foreground">{((result as any).results.hepatitis.apri_score ?? 0).toFixed(2)}</p>
+                              </div>
+                              <div>
+                                <p className="font-medium">ALBI Score</p>
+                                <p className="text-muted-foreground">{((result as any).results.hepatitis.albi_score ?? 0).toFixed(2)}</p>
+                              </div>
+                            </div>
                           </div>
+                          <p className="text-sm text-muted-foreground">{(result as any).results.hepatitis.advice || "No advice available"}</p>
                         </div>
                       </div>
-                      <p className="text-sm text-muted-foreground">{(result as any).results.hepatitis.advice}</p>
-                    </div>
-                  </div>
-                )}
+                    )
+                  }
 
-                {/* Cancer Risk Card */}
-                {filterOptions.showCancer && (result as any).results.cancer && (
-                  <div className="rounded-xl gradient-card p-4 md:p-5 animate-in slide-in-from-right-4 duration-300 delay-200 hover-lift">
-                    <div className="flex items-center gap-3 mb-3">
-                      <div className="flex h-8 w-8 items-center justify-center rounded-lg gradient-primary animate-glow">
-                        <Stethoscope className="h-4 w-4 text-primary-foreground" />
-                      </div>
-                      <h3 className="text-lg font-semibold gradient-text">Cancer Risk Assessment</h3>
-                    </div>
-                    <div className="space-y-3">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                          <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-background/50">
-                            {getRiskIcon((result as any).results.cancer.risk_percentage, 'cancer')}
+                  // Cancer Risk Card
+                  if (analysisType === 'cancer' && filterOptions.showCancer && (result as any).results.cancer) {
+                    return (
+                      <div key="cancer" className="rounded-xl gradient-card p-4 md:p-5 animate-in slide-in-from-right-4 duration-300 delay-200 hover-lift">
+                        <div className="flex items-center gap-3 mb-3">
+                          <div className="flex h-8 w-8 items-center justify-center rounded-lg gradient-primary animate-glow">
+                            <Stethoscope className="h-4 w-4 text-primary-foreground" />
                           </div>
-                          <div>
-                            <p className="font-semibold text-sm">Risk Level: {(result as any).results.cancer.risk_percentage.toFixed(1)}%</p>
-                            <p className="text-xs text-muted-foreground">5-Tier Assessment</p>
-                          </div>
+                          <h3 className="text-lg font-semibold gradient-text">Cancer Risk Assessment</h3>
                         </div>
-                        <Badge variant="outline" className={`${getRiskColor((result as any).results.cancer.risk_percentage, 'cancer')} font-semibold text-xs`}>
-                          {(result as any).results.cancer.risk_percentage.toFixed(1)}%
-                        </Badge>
+                        <div className="space-y-3">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                              <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-background/50">
+                                {getRiskIcon((result as any).results.cancer.risk_percentage ?? 0, 'cancer')}
+                              </div>
+                              <div>
+                                <p className="font-semibold text-sm">Risk Level: {((result as any).results.cancer.risk_percentage ?? 0).toFixed(1)}%</p>
+                                <p className="text-xs text-muted-foreground">5-Tier Assessment</p>
+                              </div>
+                            </div>
+                            <Badge variant="outline" className={`${getRiskColor((result as any).results.cancer.risk_percentage ?? 0, 'cancer')} font-semibold text-xs`}>
+                              {((result as any).results.cancer.risk_percentage ?? 0).toFixed(1)}%
+                            </Badge>
+                          </div>
+                          <p className="text-sm text-muted-foreground">{(result as any).results.cancer.advice || "No advice available"}</p>
+                        </div>
                       </div>
-                      <p className="text-sm text-muted-foreground">{(result as any).results.cancer.advice}</p>
-                    </div>
-                  </div>
-                )}
+                    )
+                  }
 
-                {/* Fatty Liver Card */}
-                {filterOptions.showFattyLiver && (result as any).results.fatty_liver && (
-                  <div className="rounded-xl gradient-card p-4 md:p-5 animate-in slide-in-from-bottom-4 duration-300 delay-400 hover-lift">
-                    <div className="flex items-center gap-3 mb-3">
-                      <div className="flex h-8 w-8 items-center justify-center rounded-lg gradient-primary animate-glow">
-                        <TrendingUp className="h-4 w-4 text-primary-foreground" />
-                      </div>
-                      <h3 className="text-lg font-semibold gradient-text">Fatty Liver Analysis</h3>
-                    </div>
-                    <div className="space-y-3">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                          <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-background/50">
-                            {getRiskIcon((result as any).results.fatty_liver.confidence, 'fattyLiver')}
+                  // Fatty Liver Card
+                  if (analysisType === 'fatty_liver' && filterOptions.showFattyLiver && (result as any).results.fatty_liver) {
+                    return (
+                      <div key="fatty_liver" className="rounded-xl gradient-card p-4 md:p-5 animate-in slide-in-from-bottom-4 duration-300 delay-400 hover-lift">
+                        <div className="flex items-center gap-3 mb-3">
+                          <div className="flex h-8 w-8 items-center justify-center rounded-lg gradient-primary animate-glow">
+                            <TrendingUp className="h-4 w-4 text-primary-foreground" />
                           </div>
-                          <div>
-                            <p className="font-semibold text-sm">{(result as any).results.fatty_liver.diagnosis}</p>
-                            <p className="text-xs text-muted-foreground">Confidence: {(result as any).results.fatty_liver.confidence.toFixed(1)}%</p>
-                          </div>
+                          <h3 className="text-lg font-semibold gradient-text">Fatty Liver Analysis</h3>
                         </div>
-                        <Badge variant="outline" className={`${getRiskColor((result as any).results.fatty_liver.confidence, 'fattyLiver')} font-semibold text-xs`}>
-                          {(result as any).results.fatty_liver.confidence.toFixed(1)}%
-                        </Badge>
+                        <div className="space-y-3">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                              <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-background/50">
+                                {getFattyLiverStatusIcon((result as any).results.fatty_liver.diagnosis || '')}
+                              </div>
+                              <div>
+                                <p className="font-semibold text-sm">{(result as any).results.fatty_liver.diagnosis || 'Unknown'}</p>
+                                <p className="text-xs text-muted-foreground">Injury Confidence: {((result as any).results.fatty_liver.confidence ?? 0).toFixed(1)}%</p>
+                              </div>
+                            </div>
+                            <Badge variant="outline" className={`${getFattyLiverStatusColor((result as any).results.fatty_liver.diagnosis)} font-semibold text-xs`}>
+                              {((result as any).results.fatty_liver.confidence ?? 0).toFixed(1)}%
+                            </Badge>
+                          </div>
+                          <p className="text-sm text-muted-foreground">{(result as any).results.fatty_liver.advice || "No advice available"}</p>
+                        </div>
                       </div>
-                      <p className="text-sm text-muted-foreground">{(result as any).results.fatty_liver.advice}</p>
-                    </div>
-                  </div>
-                )}
+                    )
+                  }
+
+                  return null
+                })}
               </div>
             )}
           </>
@@ -465,15 +498,15 @@ export function AiAnalysisResult() {
             <div className="flex flex-col sm:flex-row sm:items-center justify-between rounded-xl gradient-card p-3 md:p-4 animate-in slide-in-from-left-4 duration-300 hover-lift gap-3">
               <div className="flex items-center gap-3">
                 <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-background/50" aria-hidden="true">
-                  {getStatusIcon(result.confidence)}
+                  {getStatusIcon(result.confidence ?? 0)}
                 </div>
                 <div>
-                  <p className="font-semibold text-foreground text-sm md:text-base">{expandDiagnosis(result.diagnosis)}</p>
-                  <p className="text-xs text-muted-foreground">Confidence: {result.confidence}%</p>
+                  <p className="font-semibold text-foreground text-sm md:text-base">{expandDiagnosis(result.diagnosis ?? '')}</p>
+                  <p className="text-xs text-muted-foreground">Confidence: {result.confidence ?? 0}%</p>
                 </div>
               </div>
-              <Badge variant="outline" className={`${getStatusColor(result.confidence)} font-semibold text-xs md:text-sm`}>
-                {result.confidence}%
+              <Badge variant="outline" className={`${getStatusColor(result.confidence ?? 0)} font-semibold text-xs md:text-sm`}>
+                {result.confidence ?? 0}%
               </Badge>
             </div>
 

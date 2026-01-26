@@ -3,7 +3,7 @@
 import type React from "react"
 
 import { useState, useEffect } from "react"
-import { Upload, FileImage, X, Loader2, CheckCircle2, Plus, Minus, Edit2 } from "lucide-react"
+import { FileImage, Loader2, CheckCircle2, Edit2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -15,24 +15,10 @@ import { toast } from 'sonner'
 import { useAnalysis } from "@/lib/analysis-context"
 import { HepatitisInput } from "@/components/hepatitis-input"
 
-interface AnalysisResult {
-  scanType: string
-  findings: Array<{
-    region: string
-    condition: string
-    confidence: number
-    description: string
-  }>
-  overallAssessment: string
-  recommendations: string[]
-}
 
 export function AiRadiologyScan() {
-  const { setResult, setInput, result } = useAnalysis()
-  const [selectedFile, setSelectedFile] = useState<File | null>(null)
+  const { setResult, setInput, setAnalysisOrder, result } = useAnalysis()
   const [isUploading, setIsUploading] = useState(false)
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null)
-  const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(null)
   const [gateResult, setGateResult] = useState<any>(null)
   const [gateExpanded, setGateExpanded] = useState(true)
   const [isEditingParameters, setIsEditingParameters] = useState(false)
@@ -145,10 +131,8 @@ export function AiRadiologyScan() {
   // Reset component state when analysis result is cleared
   useEffect(() => {
     if (result === null) {
-      setSelectedFile(null)
-      setPreviewUrl(null)
-      setAnalysisResult(null)
       setGateResult(null)
+      setGateExpanded(true)
       setManualValues({
         // Group A: Patient Demographics & History
         age: '',
@@ -228,42 +212,16 @@ export function AiRadiologyScan() {
     hdl: { unit: 'mg/dL', range: '≥40', description: 'HDL Cholesterol' },
   }
 
-  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0]
-    if (file) {
-      // Validate file type - only images supported for OCR
-      const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/tiff', 'image/bmp']
-      const allowedExtensions = ['.png', '.jpg', '.jpeg', '.tiff', '.bmp']
-      const isValidType = allowedTypes.includes(file.type)
-      const isValidExtension = allowedExtensions.some(ext => file.name.toLowerCase().endsWith(ext))
 
-      if (!isValidType && !isValidExtension) {
-        toast.error("Invalid File Type", {
-          description: "Please upload a valid image file (PNG, JPG, JPEG, TIFF, BMP).",
-        })
-        return
-      }
 
-      // Validate file size (max 10MB)
-      const maxSize = 10 * 1024 * 1024 // 10MB
-      if (file.size > maxSize) {
-        toast.error("File Too Large", {
-          description: "Please upload a file smaller than 10MB.",
-        })
-        return
-      }
+  const handleCancerAnalysis = async () => {
+    // Validate required fields
+    const requiredFields = ['age', 'gender', 'bmi', 'smoking', 'genetic_risk', 'activity', 'alcohol', 'cancer_history']
+    const missingRequired = requiredFields.filter(key => !manualValues[key] || manualValues[key].trim() === '')
 
-      setSelectedFile(file)
-      const url = URL.createObjectURL(file)
-      setPreviewUrl(url)
-      setAnalysisResult(null) // Reset previous results
-    }
-  }
-
-  const handleUpload = async () => {
-    if (!selectedFile) {
-      toast.error("No File Selected", {
-        description: "Please select a file to analyze.",
+    if (missingRequired.length > 0) {
+      toast.error("Required Fields Missing", {
+        description: `Please fill in: ${missingRequired.join(', ')}`,
       })
       return
     }
@@ -271,56 +229,176 @@ export function AiRadiologyScan() {
     setIsUploading(true)
 
     try {
-      const formData = new FormData()
-      formData.append("file", selectedFile)
+      // Construct payload with mode 'cancer' and merge gate + cancer data
+      const payload: Record<string, any> = { mode: 'cancer' }
+
+      // Map JavaScript variable names to exact backend snake_case keys
+      const keyMapping: Record<string, string> = {
+        'age': 'age',
+        'gender': 'gender',
+        'bmi': 'bmi',
+        'smoking': 'smoking',
+        'genetic_risk': 'genetic_risk',
+        'activity': 'activity',
+        'alcohol': 'alcohol',
+        'cancer_history': 'cancer_history'
+      }
+
+      requiredFields.forEach(key => {
+        const backendKey = keyMapping[key] || key
+        if (['age', 'bmi'].includes(key)) {
+          payload[backendKey] = Number(manualValues[key])
+        } else {
+          payload[backendKey] = manualValues[key]
+        }
+      })
+
+      console.log('Sending cancer payload:', payload)
 
       const response = await fetch("/api/analyze", {
         method: "POST",
-        body: formData,
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
       })
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}))
-        throw new Error(errorData.error || "Analysis failed")
+        const errorData = await response.json().catch(() => ({ error: `HTTP ${response.status}: ${response.statusText}` }))
+        throw new Error(errorData.error || `Backend error: ${response.status}`)
       }
 
       const result = await response.json()
 
-      if (result.success) {
-        setAnalysisResult(result.analysis)
-        setResult({
-          diagnosis: result.analysis.overallAssessment,
-          confidence: Math.round(result.analysis.findings[0]?.confidence * 100 || 0),
-          advice: result.analysis.recommendations?.[0] || "Follow up with healthcare provider"
-        })
-        toast.success("Analysis Complete", {
-          description: "Image has been analyzed successfully.",
+      if (result.success && result.results && result.results.cancer) {
+        // Deep merge the cancer result into analysis state
+        setGateResult((prev: any) => ({
+          ...prev,
+          results: {
+            ...prev?.results,
+            cancer: result.results.cancer
+          }
+        }))
+
+        // Update global result for display in right column
+        setResult(prev => ({
+          ...prev,
+          results: {
+            ...(prev?.results || {}), // PRESERVE existing siblings
+            cancer: result.results.cancer
+          }
+        }))
+
+        // Update analysis order - move cancer to front
+        setAnalysisOrder(prev => ['cancer', ...prev.filter(item => item !== 'cancer')])
+
+        toast.success("Cancer Analysis Complete", {
+          description: `Risk Level: ${result.results.cancer.risk_level} (${result.results.cancer.risk_percentage}%)`,
         })
       } else {
         throw new Error(result.error || "Analysis failed")
       }
     } catch (error) {
-      console.error("Upload error:", error)
-      let errorMessage = "Failed to analyze image. Please try again."
-      let errorDescription = "An unexpected error occurred."
+      console.error("Cancer analysis error:", error)
+      const errorMessage = error instanceof Error ? error.message : "Failed to analyze cancer risk. Please try again."
+      toast.error("Cancer Analysis Failed", {
+        description: errorMessage,
+      })
+    } finally {
+      setIsUploading(false)
+    }
+  }
 
-      if (error instanceof Error) {
-        if (error.message.includes("No lab values")) {
-          errorMessage = "OCR Extraction Failed"
-          errorDescription = "Could not extract lab values from the image. Please ensure the image contains clear, readable text with lab test results."
-        } else if (error.message.includes("Unsupported file type")) {
-          errorMessage = "Invalid File Type"
-          errorDescription = "Please upload a valid image file (PNG, JPG, JPEG, TIFF, BMP)."
-        } else if (error.message.includes("Analysis failed")) {
-          errorMessage = "Analysis Failed"
-          errorDescription = "The AI analysis could not be completed. Please check your internet connection and try again."
-        } else {
-          errorDescription = error.message
-        }
+  const handleFattyLiverAnalysis = async () => {
+    // Validate required fields
+    const requiredFields = ['albumin', 'alp', 'ast', 'alt', 'cholesterol', 'creatinine', 'glucose', 'ggt', 'bilirubin', 'triglycerides', 'uric_acid', 'platelets', 'hdl']
+    const missingRequired = requiredFields.filter(key => !manualValues[key] || manualValues[key].trim() === '')
+
+    if (missingRequired.length > 0) {
+      toast.error("Required Fields Missing", {
+        description: `Please fill in: ${missingRequired.join(', ')}`,
+      })
+      return
+    }
+
+    setIsUploading(true)
+
+    try {
+      // Construct payload with mode 'fatty_liver' and merge gate + fatty liver data
+      const payload: Record<string, any> = { mode: 'fatty_liver' }
+
+      // Map JavaScript variable names to exact backend snake_case keys
+      const keyMapping: Record<string, string> = {
+        'albumin': 'albumin',
+        'alp': 'alp',
+        'ast': 'ast',
+        'alt': 'alt',
+        'cholesterol': 'cholesterol',
+        'creatinine': 'creatinine',
+        'glucose': 'glucose',
+        'ggt': 'ggt',
+        'bilirubin': 'bilirubin',
+        'triglycerides': 'triglycerides',
+        'uric_acid': 'uric_acid',
+        'platelets': 'platelets',
+        'hdl': 'hdl'
       }
 
-      toast.error(errorMessage, {
-        description: errorDescription,
+      requiredFields.forEach(key => {
+        const backendKey = keyMapping[key] || key
+        payload[backendKey] = Number(manualValues[key])
+      })
+
+      console.log('Sending fatty liver payload:', payload)
+
+      const response = await fetch("/api/analyze", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: `HTTP ${response.status}: ${response.statusText}` }))
+        throw new Error(errorData.error || `Backend error: ${response.status}`)
+      }
+
+      const result = await response.json()
+
+      if (result.success && result.results && result.results.fatty_liver) {
+        // Deep merge the fatty liver result into analysis state
+        setGateResult((prev: any) => ({
+          ...prev,
+          results: {
+            ...prev?.results,
+            fatty_liver: result.results.fatty_liver
+          }
+        }))
+
+        // Update global result for display in right column
+        setResult((prev: any) => ({
+          ...prev,
+          results: {
+            ...(prev?.results || {}), // PRESERVE existing siblings
+            fatty_liver: result.results.fatty_liver
+          }
+        }))
+
+        // Update analysis order - move fatty_liver to front
+        setAnalysisOrder(prev => ['fatty_liver', ...prev.filter(item => item !== 'fatty_liver')])
+
+        toast.success("Fatty Liver Analysis Complete", {
+          description: `${result.results.fatty_liver.diagnosis} (${result.results.fatty_liver.sick_probability}%)`,
+        })
+      } else {
+        throw new Error(result.error || "Analysis failed")
+      }
+    } catch (error) {
+      console.error("Fatty liver analysis error:", error)
+      const errorMessage = error instanceof Error ? error.message : "Failed to analyze fatty liver. Please try again."
+      toast.error("Fatty Liver Analysis Failed", {
+        description: errorMessage,
       })
     } finally {
       setIsUploading(false)
@@ -392,16 +470,22 @@ export function AiRadiologyScan() {
           if (result.diagnosis === 'Healthy') {
             // Healthy - show green card
             setResult({
+              gate_prediction: 1,
               diagnosis: result.diagnosis,
               confidence: result.confidence,
-              advice: result.advice
+              advice: result.advice,
+              results: {}
             })
-            toast.success("Gate Screening Complete", {
+            toast.success("General Test Complete", {
               description: "Patient appears healthy. No further analysis needed.",
             })
           } else {
             // Sick - show detailed analysis tabs
-            toast.warning("Gate Screening Complete", {
+            setResult({
+              gate_prediction: 0,
+              results: {}
+            })
+            toast.warning("General Test Complete", {
               description: "Potential risk detected. Detailed analysis available in tabs below.",
             })
           }
@@ -419,33 +503,25 @@ export function AiRadiologyScan() {
       }
   }
 
-  const clearFile = () => {
-    setSelectedFile(null)
-    setAnalysisResult(null)
-    if (previewUrl) {
-      URL.revokeObjectURL(previewUrl)
-      setPreviewUrl(null)
-    }
-  }
 
   const handlePresetSelect = (presetData: Record<string, string>) => {
-    // Define gate screening fields (required for initial screening)
+    // Define gate screening fields (NEVER change these with presets)
     const gateFields = ['age', 'gender', 'bilirubin', 'bilirubin_direct', 'alp', 'alt', 'ast', 'total_proteins', 'albumin', 'ag_ratio']
 
-    // Define tab-specific fields
-    const cancerFields = ['age', 'gender', 'bmi', 'smoking', 'alcohol', 'activity', 'genetic_risk', 'cancer_history']
+    // Define analysis-specific fields (exclude gate fields)
+    const cancerFields = ['bmi', 'smoking', 'alcohol', 'activity', 'genetic_risk', 'cancer_history']
     const hepatitisFields = ['platelets', 'prothrombin', 'inr', 'cholesterol', 'triglycerides', 'copper', 'hepatomegaly', 'spiders', 'edema', 'ascites']
-    const fattyLiverFields = ['albumin', 'alp', 'ast', 'alt', 'cholesterol', 'creatinine', 'glucose', 'ggt', 'bilirubin', 'triglycerides', 'uric_acid', 'platelets', 'hdl']
+    const fattyLiverFields = ['cholesterol', 'creatinine', 'glucose', 'ggt', 'triglycerides', 'uric_acid', 'platelets', 'hdl']
 
     // Check if patient has active analysis result (diagnosed as "Sick")
     const isSickMode = gateResult && gateResult.diagnosis !== 'Healthy'
 
     if (isSickMode) {
-      // Sick Mode: Fill ONLY the active tab's fields
+      // Sick Mode: Fill ONLY analysis-specific fields for the active tab (NEVER touch gate fields)
       let filteredData: Record<string, string> = {}
 
       if (activeTab === 'cancer') {
-        // Only update cancer-related fields
+        // Only update cancer-specific fields (excluding gate fields)
         cancerFields.forEach(field => {
           if (presetData[field] !== undefined) {
             filteredData[field] = presetData[field]
@@ -461,7 +537,7 @@ export function AiRadiologyScan() {
         setHepatitisPresetData(filteredData)
         return // Don't update manualValues for hepatitis, it uses its own state
       } else if (activeTab === 'fatty') {
-        // Only update fatty liver-related fields
+        // Only update fatty liver-specific fields (excluding gate fields)
         fattyLiverFields.forEach(field => {
           if (presetData[field] !== undefined) {
             filteredData[field] = presetData[field]
@@ -568,108 +644,9 @@ export function AiRadiologyScan() {
           <h2 className="text-2xl md:text-3xl font-bold bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 bg-clip-text text-transparent mb-2">
             AI Medical Analysis
           </h2>
-          <p className="text-gray-600 dark:text-gray-300 text-base md:text-lg">Upload lab reports or enter values for AI analysis</p>
+          <p className="text-gray-600 dark:text-gray-300 text-base md:text-lg">Enter values for AI analysis</p>
         </div>
-        <Tabs defaultValue="upload" className="w-full">
-          <TabsList className="grid w-full grid-cols-2" role="tablist">
-            <TabsTrigger value="upload" aria-controls="upload-panel">Upload Image</TabsTrigger>
-            <TabsTrigger value="manual" aria-controls="manual-panel">Manual Input</TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="upload" className="space-y-4 md:space-y-6" id="upload-panel" role="tabpanel" aria-labelledby="upload-tab">
-            {!previewUrl ? (
-              <label className="flex cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed border-primary/30 gradient-bg p-8 md:p-12 lg:p-16 transition-all duration-300 hover:border-primary/50 hover:scale-105 animate-in zoom-in-95 duration-300 hover-lift focus-within:ring-2 focus-within:ring-primary/50 focus-within:ring-offset-2">
-                <div className="flex h-12 w-12 md:h-16 md:w-16 items-center justify-center rounded-2xl gradient-primary mb-4 md:mb-6 animate-glow">
-                  <Upload className="h-6 w-6 md:h-8 md:w-8 text-primary-foreground" />
-                </div>
-                <p className="mb-2 md:mb-3 text-base md:text-lg font-semibold gradient-text">Click to upload or drag and drop</p>
-                <p className="text-xs md:text-sm text-muted-foreground">Lab reports (PNG, JPG, PDF)</p>
-                <input type="file" className="hidden" accept="image/*,.pdf,.dcm" onChange={handleFileSelect} aria-label="Upload lab report image" />
-              </label>
-            ) : (
-              <div className="space-y-4">
-                <div className="relative overflow-hidden rounded-2xl gradient-card animate-in slide-in-from-left-4 duration-500 hover-lift">
-                  <img
-                    src={previewUrl || "/placeholder.svg"}
-                    alt="Lab report preview"
-                    className="h-48 md:h-64 w-full object-contain bg-background/50"
-                  />
-                  <Button variant="destructive" size="icon" className="absolute right-2 top-2 md:right-3 md:top-3 rounded-xl gradient-primary hover-lift" onClick={clearFile} aria-label="Remove image">
-                    <X className="h-4 w-4" />
-                  </Button>
-                </div>
-
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between rounded-xl gradient-card p-3 md:p-4 animate-in slide-in-from-right-4 duration-500 delay-200 hover-lift gap-2">
-                  <div className="flex items-center gap-3">
-                    <div className="flex h-8 w-8 items-center justify-center rounded-lg gradient-primary">
-                      <FileImage className="h-4 w-4 text-primary-foreground" />
-                    </div>
-                    <span className="text-sm font-semibold truncate max-w-[200px]">{selectedFile?.name}</span>
-                  </div>
-                  <span className="text-xs text-muted-foreground font-medium">
-                    {selectedFile && (selectedFile.size / 1024).toFixed(2)} KB
-                  </span>
-                </div>
-
-                {analysisResult && (
-                  <div className="space-y-4 rounded-2xl gradient-card p-4 md:p-6 animate-in slide-in-from-bottom-4 duration-500 delay-400 hover-lift">
-                    <div className="flex items-center gap-3 text-primary">
-                      <div className="flex h-8 w-8 md:h-10 md:w-10 items-center justify-center rounded-xl gradient-primary animate-glow">
-                        <CheckCircle2 className="h-4 w-4 md:h-5 md:w-5 text-primary-foreground" />
-                      </div>
-                      <h4 className="text-lg md:text-xl font-bold gradient-text">Analysis Results</h4>
-                    </div>
-
-                    <div className="space-y-2">
-                      <p className="text-sm">
-                        <span className="font-medium">Scan Type:</span> {analysisResult.scanType}
-                      </p>
-
-                      <div className="space-y-2">
-                        <p className="text-sm font-medium">Findings:</p>
-                        {analysisResult.findings.map((finding, idx) => (
-                          <div key={idx} className="rounded bg-background p-2 text-sm animate-in fade-in-0 duration-300" style={{ animationDelay: `${idx * 100}ms` }}>
-                            <p className="font-medium">
-                              {finding.region}: {finding.condition}
-                            </p>
-                            <p className="text-xs text-muted-foreground">
-                              Confidence: {(finding.confidence * 100).toFixed(0)}%
-                            </p>
-                            <p className="text-xs">{finding.description}</p>
-                          </div>
-                        ))}
-                      </div>
-
-                      <div>
-                        <p className="text-sm font-medium">Assessment:</p>
-                        <p className="text-sm text-muted-foreground">{analysisResult.overallAssessment}</p>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                <Button onClick={handleUpload} disabled={isUploading || !!analysisResult} className="w-full rounded-xl gradient-primary hover-lift animate-in fade-in-0 duration-500 delay-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200" aria-label={isUploading ? "Analyzing image" : analysisResult ? "Analysis completed" : "Analyze uploaded image"} onKeyDown={(e) => handleKeyDown(e, handleUpload)}>
-                  {isUploading ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" />
-                      <span className="animate-pulse">Analyzing image...</span>
-                    </>
-                  ) : analysisResult ? (
-                    <>
-                      <CheckCircle2 className="mr-2 h-4 w-4" aria-hidden="true" />
-                      Analysis Complete
-                    </>
-                  ) : (
-                    <>
-                      <Upload className="mr-2 h-4 w-4" aria-hidden="true" />
-                      Analyze Image
-                    </>
-                  )}
-                </Button>
-              </div>
-            )}
-          </TabsContent>
-
+        <Tabs defaultValue="manual" className="w-full">
           <TabsContent value="manual" className="space-y-4 md:space-y-6" id="manual-panel" role="tabpanel" aria-labelledby="manual-tab">
             <div className="space-y-4">
               {/* Hide this card if gate analysis detected a sick patient */}
@@ -798,24 +775,20 @@ export function AiRadiologyScan() {
                 </Card>
               </div>
 
-              {/* Diagnosis Result Section - Always visible when gate result exists */}
-              {gateResult && (
+              {/* Diagnosis Result Section - Only show for sick patients */}
+              {gateResult && gateResult.diagnosis !== 'Healthy' && (
                 <Card className="gradient-card">
                   <CardHeader>
                     <CardTitle className="text-base md:text-lg flex items-center gap-2">
-                      <div className={`w-3 h-3 rounded-full ${gateResult.diagnosis === 'Healthy' ? 'bg-green-500' : 'bg-yellow-500'}`}></div>
-                      Gate Screening Result
+                      <div className="w-3 h-3 rounded-full bg-yellow-500"></div>
+                      General Test Result
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-3">
                       <div className="flex items-center justify-between">
                         <span className="font-medium">Diagnosis:</span>
-                        <span className={`px-3 py-1 rounded-full text-sm font-medium ${
-                          gateResult.diagnosis === 'Healthy'
-                            ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
-                            : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200'
-                        }`}>
+                        <span className="px-3 py-1 rounded-full text-sm font-medium bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200">
                           {gateResult.diagnosis}
                         </span>
                       </div>
@@ -824,7 +797,7 @@ export function AiRadiologyScan() {
                         <span className="text-sm">{gateResult.confidence}%</span>
                       </div>
                       <div className="pt-2 border-t">
-                        <p className="text-sm text-muted-foreground">{gateResult.advice}</p>
+                        <p className="text-sm text-muted-foreground">{gateResult.advice.replace('Gate screening', 'General Test')}</p>
                       </div>
                     </div>
                   </CardContent>
@@ -871,22 +844,24 @@ export function AiRadiologyScan() {
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             {/* Age */}
                             <div className="space-y-2">
-                              <Label className="text-sm font-medium">Age</Label>
+                              <Label className="text-sm font-medium">Age <span className="text-xs text-muted-foreground">(General Test(not changable))</span></Label>
                               <Input
                                 type="number"
                                 value={manualValues['age'] || ''}
                                 onChange={(e) => setManualValues(prev => ({ ...prev, age: e.target.value }))}
                                 placeholder="Enter age"
                                 className="text-sm"
+                                disabled
                               />
                             </div>
 
                             {/* Gender */}
                             <div className="space-y-2">
-                              <Label className="text-sm font-medium">Gender</Label>
+                              <Label className="text-sm font-medium">Gender <span className="text-xs text-muted-foreground">(General Test(not changable))</span></Label>
                               <Select
                                 value={manualValues['gender'] || ''}
                                 onValueChange={(val) => setManualValues(prev => ({ ...prev, gender: val }))}
+                                disabled
                               >
                                 <SelectTrigger>
                                   <SelectValue placeholder="Select gender" />
@@ -1003,7 +978,7 @@ export function AiRadiologyScan() {
                           {/* Buttons */}
                           <div className="mt-6 flex justify-start gap-3">
                             <Button
-                              onClick={() => {/* TODO: Implement cancer risk analysis */}}
+                              onClick={handleCancerAnalysis}
                               className="bg-red-600 hover:bg-red-700 text-white"
                               disabled={isUploading}
                             >
@@ -1047,13 +1022,43 @@ export function AiRadiologyScan() {
                               albumin: Number(manualValues['albumin']) || 0,
                             }}
                             presetData={hepatitisPresetData}
-                            onAnalysisComplete={(result) => {
+                            onAnalysisComplete={(responseData) => {
                               // Handle hepatitis analysis result
-                              console.log('Hepatitis analysis result:', result)
-                              // TODO: Update analysis context with hepatitis results
-                              toast.success("Hepatitis Analysis Complete", {
-                                description: "Hepatitis fibrosis assessment completed successfully.",
-                              })
+                              console.log('Hepatitis analysis result:', responseData)
+
+                              // Check if the response has the expected structure
+                              if (responseData.results && responseData.results.hepatitis) {
+                                // Deep merge the hepatitis result into analysis state
+                                setGateResult((prev: any) => ({
+                                  ...prev,
+                                  results: {
+                                    ...prev?.results,
+                                    hepatitis: responseData.results.hepatitis
+                                  }
+                                }))
+
+                                // Update global result for display in right column
+                                setResult(prev => ({
+                                  ...prev,
+                                  results: {
+                                    ...(prev?.results || {}), // PRESERVE existing siblings
+                                    hepatitis: responseData.results.hepatitis
+                                  }
+                                }))
+
+                                // Update analysis order - move hepatitis to front
+                                setAnalysisOrder(prev => ['hepatitis', ...prev.filter(item => item !== 'hepatitis')])
+
+                                // Trigger the UI refresh
+                                toast.success("Hepatitis Analysis Complete", {
+                                  description: `Stage ${responseData.results.hepatitis.stage} Fibrosis Detected`,
+                                })
+                              } else {
+                                console.error("Invalid Hepatitis Response:", responseData)
+                                toast.error("Analysis Error", {
+                                  description: "Received incomplete data from server"
+                                })
+                              }
                             }}
                           />
                         </div>
@@ -1075,7 +1080,7 @@ export function AiRadiologyScan() {
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             {/* Albumin */}
                             <div className="space-y-2">
-                              <Label className="text-sm font-medium">Albumin (g/dL)</Label>
+                              <Label className="text-sm font-medium">Albumin (g/dL) <span className="text-xs text-muted-foreground">(General Test(not changable))</span></Label>
                               <Input
                                 type="number"
                                 step="0.1"
@@ -1083,42 +1088,46 @@ export function AiRadiologyScan() {
                                 onChange={(e) => setManualValues(prev => ({ ...prev, albumin: e.target.value }))}
                                 placeholder="3.5-5.0"
                                 className="text-sm"
+                                disabled
                               />
                             </div>
 
                             {/* ALP */}
                             <div className="space-y-2">
-                              <Label className="text-sm font-medium">ALP (IU/L)</Label>
+                              <Label className="text-sm font-medium">ALP (IU/L) <span className="text-xs text-muted-foreground">(General Test(not changable))</span></Label>
                               <Input
                                 type="number"
                                 value={manualValues['alp'] || ''}
                                 onChange={(e) => setManualValues(prev => ({ ...prev, alp: e.target.value }))}
                                 placeholder="44-147"
                                 className="text-sm"
+                                disabled
                               />
                             </div>
 
                             {/* AST */}
                             <div className="space-y-2">
-                              <Label className="text-sm font-medium">AST (IU/L)</Label>
+                              <Label className="text-sm font-medium">AST (IU/L) <span className="text-xs text-muted-foreground">(General Test(not changable))</span></Label>
                               <Input
                                 type="number"
                                 value={manualValues['ast'] || ''}
                                 onChange={(e) => setManualValues(prev => ({ ...prev, ast: e.target.value }))}
                                 placeholder="10-40"
                                 className="text-sm"
+                                disabled
                               />
                             </div>
 
                             {/* ALT */}
                             <div className="space-y-2">
-                              <Label className="text-sm font-medium">ALT (IU/L)</Label>
+                              <Label className="text-sm font-medium">ALT (IU/L) <span className="text-xs text-muted-foreground">(General Test(not changable))</span></Label>
                               <Input
                                 type="number"
                                 value={manualValues['alt'] || ''}
                                 onChange={(e) => setManualValues(prev => ({ ...prev, alt: e.target.value }))}
                                 placeholder="7-56"
                                 className="text-sm"
+                                disabled
                               />
                             </div>
 
@@ -1173,7 +1182,7 @@ export function AiRadiologyScan() {
 
                             {/* Bilirubin */}
                             <div className="space-y-2">
-                              <Label className="text-sm font-medium">Bilirubin (mg/dL)</Label>
+                              <Label className="text-sm font-medium">Total Bilirubin (mg/dL) <span className="text-xs text-muted-foreground">(General Test(not changable))</span></Label>
                               <Input
                                 type="number"
                                 step="0.1"
@@ -1181,6 +1190,7 @@ export function AiRadiologyScan() {
                                 onChange={(e) => setManualValues(prev => ({ ...prev, bilirubin: e.target.value }))}
                                 placeholder="0.3-1.2"
                                 className="text-sm"
+                                disabled
                               />
                             </div>
 
@@ -1237,7 +1247,7 @@ export function AiRadiologyScan() {
                           {/* Buttons */}
                           <div className="mt-6 flex justify-start gap-3">
                             <Button
-                              onClick={() => {/* TODO: Implement fatty liver analysis */}}
+                              onClick={handleFattyLiverAnalysis}
                               className="bg-green-600 hover:bg-green-700 text-white"
                               disabled={isUploading}
                             >
@@ -1286,9 +1296,9 @@ export function AiRadiologyScan() {
                       variant="outline"
                       size="sm"
                       onClick={() => handlePresetSelect({
-                        age: '45', gender: 'Male', bmi: '24', smoking: 'No', alcohol: 'Low', activity: 'Moderate', genetic_risk: 'Low', cancer_history: 'No',
+                        age: '25', gender: 'Male', bmi: '24', smoking: 'No', alcohol: 'Low', activity: 'Moderate', genetic_risk: 'Low', cancer_history: 'No',
                         ascites: 'No', hepatomegaly: 'No', spiders: 'No', edema: 'No',
-                        bilirubin: '1.2', bilirubin_direct: '0.1', cholesterol: '180', albumin: '4.2', copper: '110', alp: '90', alt: '45', ast: '35', total_proteins: '7.2', ag_ratio: '1.1', platelets: '280000', prothrombin: '12.5', inr: '1.0', creatinine: '0.9', glucose: '95', ggt: '40', triglycerides: '140', uric_acid: '4.5', hdl: '55'
+                        bilirubin: '0.7', bilirubin_direct: '0.1', cholesterol: '180', albumin: '4.0', copper: '110', alp: '150', alt: '20', ast: '22', total_proteins: '7.5', ag_ratio: '1.10', platelets: '280000', prothrombin: '12.5', inr: '1.0', creatinine: '0.9', glucose: '95', ggt: '40', triglycerides: '140', uric_acid: '4.5', hdl: '55'
                       })}
                       className="text-xs"
                     >
@@ -1322,32 +1332,34 @@ export function AiRadiologyScan() {
                 </CardContent>
               </Card>
 
-              <Card className="gradient-card">
-                <CardContent className="pt-4">
-                  <Button
-                    onClick={handleManualSubmit}
-                    disabled={isUploading || ['age', 'gender', 'bilirubin', 'bilirubin_direct', 'alp', 'alt', 'ast', 'total_proteins', 'albumin', 'ag_ratio'].some(key => !manualValues[key] || manualValues[key].trim() === '')}
-                    className="w-full rounded-xl gradient-primary hover-lift disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
-                    aria-label={isUploading ? "Analyzing" : "Run initial screening"}
-                    onKeyDown={(e) => handleKeyDown(e, handleManualSubmit)}
-                  >
-                    {isUploading ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" />
-                        <span className="animate-pulse">Analyzing...</span>
-                      </>
-                    ) : (
-                      <>
-                        <CheckCircle2 className="mr-2 h-4 w-4" aria-hidden="true" />
-                        Run Initial Screening
-                      </>
-                    )}
-                  </Button>
-                  <p className="text-xs text-muted-foreground text-center mt-2">
-                    Gate screening using 10 key parameters to detect potential liver disease risk
-                  </p>
-                </CardContent>
-              </Card>
+              {!(gateResult && gateResult.diagnosis !== 'Healthy') && (
+                <Card className="gradient-card">
+                  <CardContent className="pt-4">
+                    <Button
+                      onClick={handleManualSubmit}
+                      disabled={isUploading || ['age', 'gender', 'bilirubin', 'bilirubin_direct', 'alp', 'alt', 'ast', 'total_proteins', 'albumin', 'ag_ratio'].some(key => !manualValues[key] || manualValues[key].trim() === '')}
+                      className="w-full rounded-xl gradient-primary hover-lift disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
+                      aria-label={isUploading ? "Analyzing" : "Run general test"}
+                      onKeyDown={(e) => handleKeyDown(e, handleManualSubmit)}
+                    >
+                      {isUploading ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" />
+                          <span className="animate-pulse">Analyzing...</span>
+                        </>
+                      ) : (
+                        <>
+                          <CheckCircle2 className="mr-2 h-4 w-4" aria-hidden="true" />
+                          Run General Test
+                        </>
+                      )}
+                    </Button>
+                    <p className="text-xs text-muted-foreground text-center mt-2">
+                      General Test using 10 key parameters to detect potential liver disease risk
+                    </p>
+                  </CardContent>
+                </Card>
+              )}
             </div>
           </TabsContent>
         </Tabs>
@@ -1501,17 +1513,21 @@ export function AiRadiologyScan() {
                         // Detailed analysis will be hidden automatically due to conditional rendering
                       }
 
+                      // Clear any existing detailed analysis results before setting new gate result
+                      setResult({
+                        diagnosis: result.diagnosis,
+                        confidence: result.confidence,
+                        advice: result.advice,
+                        gate_prediction: result.diagnosis === 'Healthy' ? 1 : 0,
+                        results: {} // Clear all previous detailed analysis results
+                      })
+
                       if (result.diagnosis === 'Healthy') {
-                        setResult({
-                          diagnosis: result.diagnosis,
-                          confidence: result.confidence,
-                          advice: result.advice
-                        })
-                        toast.success("Gate Screening Complete", {
+                        toast.success("General Test Complete", {
                           description: "Patient appears healthy. No further analysis needed.",
                         })
                       } else {
-                        toast.warning("Gate Screening Complete", {
+                        toast.warning("General Test Complete", {
                           description: "Potential risk detected. Detailed analysis available in tabs below.",
                         })
                       }

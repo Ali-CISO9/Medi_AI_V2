@@ -109,65 +109,106 @@ async def analyze_patient(user_profile: dict, db: Session = Depends(get_db)):
         # 1. Run Logic based on mode
         if mode == 'gate':
             raw_result = diagnosis_engine.predict_gate_only(profile)
+        elif mode == 'cancer':
+            raw_result = diagnosis_engine.predict_cancer_only(profile)
+        elif mode == 'fatty_liver':
+            raw_result = diagnosis_engine.predict_fatty_liver_only(profile)
+        elif mode == 'hepatitis':
+            raw_result = diagnosis_engine.predict_hepatitis_only(profile)
         else:
+            # Default to 'full' for backward compatibility
             raw_result = diagnosis_engine.predict_full_diagnosis(profile)
 
         # 2. Sanitize for JSON (The Fix)
         clean_result = make_serializable(raw_result)
 
-        # 3. Save to database if patient_id provided
+        # 3. Handle individual model results vs full diagnosis results
+        if 'analysis_type' in clean_result:
+            # Individual model result (cancer, fatty_liver, hepatitis)
+            analysis_type = clean_result['analysis_type']
+            model_results = clean_result['results']
+
+            # Extract diagnosis info from the specific model result
+            if analysis_type == 'cancer':
+                diagnosis = f"Cancer Risk: {model_results['cancer']['risk_level']}"
+                confidence = int(model_results['cancer']['risk_percentage'])
+                advice = model_results['cancer']['advice']
+                risk_level = 'high' if model_results['cancer']['risk_percentage'] > 70 else 'moderate'
+            elif analysis_type == 'fatty_liver':
+                diagnosis = model_results['fatty_liver']['diagnosis']
+                confidence = model_results['fatty_liver']['sick_probability']
+                advice = model_results['fatty_liver']['advice']
+                risk_level = 'high' if model_results['fatty_liver']['has_fatty_liver'] else 'low'
+            elif analysis_type == 'hepatitis':
+                diagnosis = f"Hepatitis Stage {model_results['hepatitis']['stage']}"
+                confidence = int(model_results['hepatitis']['mortality_risk'])
+                advice = model_results['hepatitis']['status_advice']
+                risk_level = model_results['hepatitis']['risk_level']
+
+            detailed_results = model_results
+            gate_prediction = 0  # Not applicable for individual models
+        else:
+            # Full diagnosis or gate result
+            diagnosis = clean_result['diagnosis']
+            confidence = clean_result['confidence']
+            advice = clean_result['advice']
+            risk_level = clean_result['risk_level']
+            detailed_results = clean_result.get('detailed_results', {})
+            gate_prediction = clean_result.get('detailed_results', {}).get('gate', {}).get('prediction', 0)
+
+        # 4. Save to database if patient_id provided (only for full/gate results)
         patient_id_in_data = user_profile.get('patient_id')
-        if patient_id_in_data:
+        if patient_id_in_data and 'analysis_type' not in clean_result:
             try:
                 # Find the patient by database ID (not patient_id string)
                 patient = db.query(Patient).filter(Patient.id == patient_id_in_data).first()
                 if patient:
                     # Map risk level from DiagnosisEngine to database format
                     risk_level_map = {'low': 'low', 'moderate': 'medium', 'high': 'high'}
-                    risk_level = risk_level_map.get(clean_result['risk_level'], 'medium')
+                    db_risk_level = risk_level_map.get(risk_level, 'medium')
 
                     # Save the analysis to database
                     medical_report = MedicalReport(
                         patient_id=patient.id,
-                        diagnosis=clean_result['diagnosis'],
-                        confidence=clean_result['confidence'],
-                        advice=clean_result['advice'],
-                        risk_level=risk_level
+                        diagnosis=diagnosis,
+                        confidence=confidence,
+                        advice=advice,
+                        risk_level=db_risk_level
                     )
                     db.add(medical_report)
                     db.commit()
                     db.refresh(medical_report)
-                    print(f"Saved analysis for patient {patient.name} (ID: {patient.id}) - Risk: {risk_level}")
+                    print(f"Saved analysis for patient {patient.name} (ID: {patient.id}) - Risk: {db_risk_level}")
                 else:
                     print(f"Patient with ID {patient_id_in_data} not found, analysis not saved")
             except Exception as save_error:
                 print(f"Error saving analysis: {save_error}")
                 # Don't fail the analysis if saving fails, just log it
 
-        # 4. Return sanitized result
+        # 5. Return sanitized result
         return {
             "success": True,
-            "gate_prediction": clean_result.get('detailed_results', {}).get('gate', {}).get('prediction', 0),
-            "results": clean_result.get('detailed_results', {}),
-            "diagnosis": clean_result['diagnosis'],
-            "confidence": clean_result['confidence'],
-            "advice": clean_result['advice'],
-            "risk_level": clean_result['risk_level'],
+            "gate_prediction": gate_prediction,
+            "results": detailed_results,
+            "diagnosis": diagnosis,
+            "confidence": confidence,
+            "advice": advice,
+            "risk_level": risk_level,
             # Legacy fields for backward compatibility
             "analysis": {
-                "diagnosis": clean_result['diagnosis'],
-                "confidence": clean_result['confidence'],
-                "advice": clean_result['advice'],
-                "overallAssessment": f"Risk Level: {clean_result['risk_level'].title()}",
-                "recommendations": [clean_result['advice']],
-                "detailedAnalyses": clean_result['detailed_results'],
+                "diagnosis": diagnosis,
+                "confidence": confidence,
+                "advice": advice,
+                "overallAssessment": f"Risk Level: {risk_level.title()}",
+                "recommendations": [advice],
+                "detailedAnalyses": detailed_results,
                 "scanType": "AI-Powered Multi-Stage Liver Disease Analysis",
                 "findings": [
                     {
                         "region": "Liver",
-                        "condition": clean_result['diagnosis'],
-                        "confidence": clean_result['confidence'] / 100.0,
-                        "description": clean_result['advice']
+                        "condition": diagnosis,
+                        "confidence": confidence / 100.0,
+                        "description": advice
                     }
                 ],
                 "timestamp": datetime.now().isoformat(),

@@ -158,6 +158,87 @@ class DiagnosisEngine:
                 'risk_level': 'moderate'
             }
 
+    def predict_cancer_only(self, user_profile: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Perform cancer-only analysis.
+
+        Args:
+            user_profile: Dictionary with required keys for cancer model
+
+        Returns:
+            Dictionary with cancer analysis results
+        """
+        # Validate input - only check for CANCER_KEYS
+        missing_keys = [key for key in self.CANCER_KEYS if key not in user_profile]
+        if missing_keys:
+            raise ValueError(f"Missing required keys for cancer analysis: {missing_keys}")
+
+        # Convert string values to appropriate types
+        processed_profile = self._preprocess_profile(user_profile)
+
+        # Cancer Model prediction
+        cancer_result = self._predict_cancer(processed_profile)
+
+        return {
+            'success': True,
+            'analysis_type': 'cancer',
+            'results': {'cancer': cancer_result}
+        }
+
+    def predict_fatty_liver_only(self, user_profile: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Perform fatty liver-only analysis.
+
+        Args:
+            user_profile: Dictionary with required keys for fatty liver model
+
+        Returns:
+            Dictionary with fatty liver analysis results
+        """
+        # Validate input - only check for FATTY_KEYS
+        missing_keys = [key for key in self.FATTY_KEYS if key not in user_profile]
+        if missing_keys:
+            raise ValueError(f"Missing required keys for fatty liver analysis: {missing_keys}")
+
+        # Convert string values to appropriate types
+        processed_profile = self._preprocess_profile(user_profile)
+
+        # Fatty Liver Model prediction
+        fatty_liver_result = self._predict_fatty_liver(processed_profile)
+
+        return {
+            'success': True,
+            'analysis_type': 'fatty_liver',
+            'results': {'fatty_liver': fatty_liver_result}
+        }
+
+    def predict_hepatitis_only(self, user_profile: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Perform hepatitis-only analysis.
+
+        Args:
+            user_profile: Dictionary with required keys for hepatitis models
+
+        Returns:
+            Dictionary with hepatitis analysis results
+        """
+        # Validate input - only check for HEP_STAGE_KEYS (most comprehensive set)
+        missing_keys = [key for key in self.HEP_STAGE_KEYS if key not in user_profile]
+        if missing_keys:
+            raise ValueError(f"Missing required keys for hepatitis analysis: {missing_keys}")
+
+        # Convert string values to appropriate types
+        processed_profile = self._preprocess_profile(user_profile)
+
+        # Hepatitis Model prediction
+        hepatitis_result = self._predict_hepatitis(processed_profile)
+
+        return {
+            'success': True,
+            'analysis_type': 'hepatitis',
+            'results': {'hepatitis': hepatitis_result}
+        }
+
     def _validate_user_profile(self, user_profile: Dict[str, Any]) -> None:
         """Validate that all required keys are present in user_profile."""
         # Get mode from request, default to 'full' for safety
@@ -328,6 +409,7 @@ class DiagnosisEngine:
             'prediction': 1 if sick_prob > 50 else 0,
             'has_fatty_liver': sick_prob > 50,
             'sick_probability': round(sick_prob, 1),
+            'confidence': round(sick_prob, 1),
             'diagnosis': diagnosis,
             'advice': advice,
             'features_used': self.FATTY_KEYS

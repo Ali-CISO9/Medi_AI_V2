@@ -3,9 +3,15 @@
 import React, { createContext, useContext, useState, ReactNode, useCallback } from 'react'
 
 interface AnalysisResult {
-  diagnosis: string
-  confidence: number
-  advice: string
+  diagnosis?: string
+  confidence?: number
+  advice?: string
+  gate_prediction?: number
+  results?: {
+    cancer?: any
+    hepatitis?: any
+    fatty_liver?: any
+  }
 }
 
 interface AnalysisInput {
@@ -63,8 +69,10 @@ interface PatientContextType {
 interface AnalysisContextType {
   result: AnalysisResult | null
   input: AnalysisInput | null
-  setResult: (result: AnalysisResult | null) => void
-  setInput: (input: AnalysisInput | null) => void
+  analysisOrder: string[]
+  setResult: React.Dispatch<React.SetStateAction<AnalysisResult | null>>
+  setInput: React.Dispatch<React.SetStateAction<AnalysisInput | null>>
+  setAnalysisOrder: React.Dispatch<React.SetStateAction<string[]>>
   reset: () => void
   resetAll: () => void
 }
@@ -142,20 +150,23 @@ export function usePatients() {
 export function AnalysisProvider({ children }: { children: ReactNode }) {
   const [result, setResult] = useState<AnalysisResult | null>(null)
   const [input, setInput] = useState<AnalysisInput | null>(null)
+  const [analysisOrder, setAnalysisOrder] = useState<string[]>([])
 
   const reset = () => {
     setResult(null)
     setInput(null)
+    setAnalysisOrder([])
   }
 
   const resetAll = () => {
     setResult(null)
     setInput(null)
+    setAnalysisOrder([])
     // Additional reset logic can be added here if needed
   }
 
   return (
-    <AnalysisContext.Provider value={{ result, input, setResult, setInput, reset, resetAll }}>
+    <AnalysisContext.Provider value={{ result, input, analysisOrder, setResult, setInput, setAnalysisOrder, reset, resetAll }}>
       {children}
     </AnalysisContext.Provider>
   )
