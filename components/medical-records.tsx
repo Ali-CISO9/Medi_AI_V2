@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Separator } from "@/components/ui/separator"
 import {
   ClipboardList,
   Search,
@@ -19,7 +20,9 @@ import {
   AlertCircle,
   CheckCircle2,
   User,
-  Stethoscope
+  Stethoscope,
+  Activity,
+  Trash2
 } from "lucide-react"
 import { format } from "date-fns"
 import { usePatients } from "@/lib/analysis-context"
@@ -44,6 +47,7 @@ interface MedicalRecord {
   profile_picture?: string
   department?: string
   doctor_name?: string
+  detailed_results?: string
 }
 
 export function MedicalRecords() {
@@ -59,6 +63,9 @@ export function MedicalRecords() {
   const [dateTo, setDateTo] = useState("")
   const [selectedRecord, setSelectedRecord] = useState<MedicalRecord | null>(null)
   const [isDetailOpen, setIsDetailOpen] = useState(false)
+
+  // Analysis detail modal state
+  const [selectedDetail, setSelectedDetail] = useState<{ type: 'cancer' | 'hepatitis' | 'fatty_liver' | 'general', data: any } | null>(null)
 
   // Fetch archived patients with their analyses
   useEffect(() => {
@@ -191,13 +198,11 @@ export function MedicalRecords() {
   }
 
   const restorePatient = async (record: MedicalRecord) => {
+    console.log("Restoring Patient ID:", record.patient_id)
+
     try {
-      const response = await fetch(`/api/patients/${record.patient_id_display}`, {
+      const response = await fetch(`/api/patients/${record.patient_id}/restore`, {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ status: 'active' }),
       })
 
       if (response.ok) {
@@ -228,6 +233,102 @@ export function MedicalRecords() {
       toast.error('Error restoring patient')
     }
   }
+
+  const deletePatient = async (record: MedicalRecord) => {
+    if (!confirm(`Are you sure you want to permanently delete patient "${record.patient_name}" and all their analyses? This action cannot be undone.`)) {
+      return
+    }
+
+    console.log("Deleting Patient ID:", record.patient_id)
+
+    try {
+      const response = await fetch(`/api/patients/${record.patient_id}`, {
+        method: 'DELETE',
+      })
+
+      if (response.ok) {
+        // Remove from current list immediately for better UX
+        setRecords(prev => prev.filter(r => r.id !== record.id))
+        setFilteredRecords(prev => prev.filter(r => r.id !== record.id))
+
+        // Refresh shared data so other components get updated
+        await refreshAllData()
+
+        toast.success('Patient and all analyses permanently deleted')
+      } else {
+        toast.error('Failed to delete patient')
+      }
+    } catch (error) {
+      console.error('Error deleting patient:', error)
+      toast.error('Error deleting patient')
+    }
+  }
+
+  const renderDiagnosticBadges = (record: MedicalRecord) => {
+    if (!record.detailed_results || Object.keys(JSON.parse(record.detailed_results || '{}')).length === 0) {
+      return (
+        <div>
+          <div className="flex items-center gap-2 mb-2">
+            {record.confidence >= 80 ? (
+              <CheckCircle2 className="h-4 w-4 text-green-600" />
+            ) : record.confidence >= 60 ? (
+              <AlertCircle className="h-4 w-4 text-yellow-600" />
+            ) : (
+              <AlertCircle className="h-4 w-4 text-red-600" />
+            )}
+            <Badge variant="outline" className={
+              record.confidence >= 80 ? "bg-green-100 text-green-800 border-green-200 text-xs" :
+              record.confidence >= 60 ? "bg-yellow-100 text-yellow-800 border-yellow-200 text-xs" :
+              "bg-red-100 text-red-800 border-red-200 text-xs"
+            }>
+              {record.confidence}% confidence
+            </Badge>
+          </div>
+          <p className="text-xs font-medium text-foreground mb-1">Diagnosis: {record.diagnosis}</p>
+          <p className="text-xs text-muted-foreground mb-2">Advice: {record.advice}</p>
+          <p className="text-xs text-muted-foreground">
+            Last Updated: {record.updated_at ? new Date(record.updated_at).toLocaleDateString() : 'N/A'} at{' '}
+            {record.updated_at ? new Date(new Date(record.updated_at).getTime() + (3 * 60 * 60 * 1000)).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'N/A'}
+          </p>
+        </div>
+      );
+    }
+    // Render badges for sick cases
+    const details = JSON.parse(record.detailed_results);
+    return (
+      <div>
+        <div className="flex flex-wrap gap-1 mb-2">
+          {/* General badge for overall result */}
+          <Badge
+            variant="outline"
+            className="bg-yellow-100 text-yellow-800 border-yellow-200 text-xs cursor-pointer hover:opacity-80"
+            onClick={() => setSelectedDetail({ type: 'general', data: { diagnosis: record.diagnosis, confidence: record.confidence, advice: record.advice } })}
+          >
+            General
+          </Badge>
+          {Object.keys(details).map(key => (
+            <Badge
+              key={key}
+              variant="outline"
+              className={
+                key === 'cancer' ? "bg-red-100 text-red-800 border-red-200 text-xs cursor-pointer hover:opacity-80" :
+                key === 'hepatitis' ? "bg-blue-100 text-blue-800 border-blue-200 text-xs cursor-pointer hover:opacity-80" :
+                key === 'fatty_liver' ? "bg-green-100 text-green-800 border-green-200 text-xs cursor-pointer hover:opacity-80" :
+                "bg-gray-100 text-gray-800 border-gray-200 text-xs cursor-pointer hover:opacity-80"
+              }
+              onClick={() => setSelectedDetail({ type: key as 'cancer' | 'hepatitis' | 'fatty_liver', data: details[key] })}
+            >
+              {key.charAt(0).toUpperCase() + key.slice(1)}
+            </Badge>
+          ))}
+        </div>
+        <p className="text-xs text-muted-foreground">
+          Last Updated: {record.updated_at ? new Date(record.updated_at).toLocaleDateString() : 'N/A'} at{' '}
+          {record.updated_at ? new Date(new Date(record.updated_at).getTime() + (3 * 60 * 60 * 1000)).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'N/A'}
+        </p>
+      </div>
+    );
+  };
 
   if (isLoading) {
     return (
@@ -367,89 +468,90 @@ export function MedicalRecords() {
             </div>
           ) : (
             <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b border-border/50">
-                    <th className="text-left py-3 px-4 font-semibold">Patient Name</th>
-                    <th className="text-left py-3 px-4 font-semibold">Medical ID</th>
-                    <th className="text-left py-3 px-4 font-semibold">AI Prediction</th>
-                    <th className="text-left py-3 px-4 font-semibold">Risk Level</th>
-                    <th className="text-left py-3 px-4 font-semibold">Date</th>
-                    <th className="text-left py-3 px-4 font-semibold">Contacts</th>
-                    <th className="text-left py-3 px-4 font-semibold">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredRecords.map((record) => (
-                    <tr
-                      key={record.id}
-                      className="border-b border-border/30 hover:bg-muted/20 transition-colors"
-                    >
-                      <td className="py-3 px-4">
-                        <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold text-sm">
-                            {record.patient_name[0].toUpperCase()}
-                          </div>
-                          <span className="font-medium">{record.patient_name}</span>
-                        </div>
-                      </td>
-                      <td className="py-3 px-4 text-muted-foreground">
-                        {record.patient_id_display}
-                      </td>
-                      <td className="py-3 px-4">
-                        <div className="max-w-xs truncate" title={record.diagnosis}>
-                          {record.diagnosis}
-                        </div>
-                      </td>
-                      <td className="py-3 px-4">
-                        <Badge variant="outline" className={getRiskColor(record.risk_level || 'medium')}>
-                          <span className="flex items-center gap-1">
-                            {getRiskIcon(record.risk_level || 'medium')}
-                            {(record.risk_level || 'medium').toUpperCase()}
-                          </span>
-                        </Badge>
-                      </td>
-                      <td className="py-3 px-4 text-muted-foreground">
-                        {format(new Date(record.created_at), 'MMM dd, yyyy')}
-                      </td>
-                      <td className="py-3 px-4">
-                        <div className="flex flex-col space-y-1">
-                          {record.email && (
-                            <p className="text-xs text-muted-foreground">📧 {record.email}</p>
-                          )}
-                          {record.phone && (
-                            <p className="text-xs text-muted-foreground">📱 {record.phone}</p>
-                          )}
-                          {!record.email && !record.phone && (
-                            <p className="text-xs text-muted-foreground text-center">-</p>
-                          )}
-                        </div>
-                      </td>
-                      <td className="py-3 px-4">
-                        <div className="flex gap-2">
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => viewRecord(record)}
-                            className="text-blue-600 border-blue-200 hover:bg-blue-50"
-                          >
-                            <Eye className="h-3 w-3 mr-1" />
-                            View
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => restorePatient(record)}
-                            className="text-green-600 border-green-200 hover:bg-green-50"
-                          >
-                            Restore
-                          </Button>
-                        </div>
-                      </td>
+              {/* Scrollable container that only appears when there are more than 5 records */}
+              <div className={filteredRecords.length > 5 ? "overflow-y-auto max-h-[400px] pr-2" : ""}>
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b border-border/50">
+                      <th className="text-left py-3 px-4 font-semibold">Patient Name</th>
+                      <th className="text-left py-3 px-4 font-semibold">Medical ID</th>
+                      <th className="text-left py-3 px-4 font-semibold">AI Prediction</th>
+                      <th className="text-left py-3 px-4 font-semibold">Date</th>
+                      <th className="text-left py-3 px-4 font-semibold">Contacts</th>
+                      <th className="text-left py-3 px-4 font-semibold">Actions</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {filteredRecords.map((record) => (
+                      <tr
+                        key={record.id}
+                        className="border-b border-border/30 hover:bg-muted/20 transition-colors"
+                      >
+                        <td className="py-3 px-4">
+                          <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold text-sm">
+                              {record.patient_name[0].toUpperCase()}
+                            </div>
+                            <span className="font-medium">{record.patient_name}</span>
+                          </div>
+                        </td>
+                        <td className="py-3 px-4 text-muted-foreground">
+                          {record.patient_id_display}
+                        </td>
+                        <td className="py-3 px-4">
+                          {renderDiagnosticBadges(record)}
+                        </td>
+                        <td className="py-3 px-4 text-muted-foreground">
+                          {format(new Date(record.created_at), 'MMM dd, yyyy')}
+                        </td>
+                        <td className="py-3 px-4">
+                          <div className="flex flex-col space-y-1">
+                            {record.email && (
+                              <p className="text-xs text-muted-foreground">📧 {record.email}</p>
+                            )}
+                            {record.phone && (
+                              <p className="text-xs text-muted-foreground">📱 {record.phone}</p>
+                            )}
+                            {!record.email && !record.phone && (
+                              <p className="text-xs text-muted-foreground text-center">-</p>
+                            )}
+                          </div>
+                        </td>
+                        <td className="py-3 px-4">
+                          <div className="flex gap-2">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => viewRecord(record)}
+                              className="text-blue-600 border-blue-200 hover:bg-blue-50"
+                            >
+                              <Eye className="h-3 w-3 mr-1" />
+                              View
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => restorePatient(record)}
+                              className="text-green-600 border-green-200 hover:bg-green-50"
+                            >
+                              Restore
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => deletePatient(record)}
+                              className="text-red-600 border-red-200 hover:bg-red-50"
+                            >
+                              <Trash2 className="h-3 w-3 mr-1" />
+                              Delete
+                            </Button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
           )}
         </CardContent>
@@ -476,39 +578,11 @@ export function MedicalRecords() {
                 <div className="grid grid-cols-2 gap-4 text-sm">
                   <div><strong>Name:</strong> {selectedRecord.patient_name}</div>
                   <div><strong>ID:</strong> {selectedRecord.patient_id_display}</div>
-                  <div><strong>Department:</strong> {selectedRecord.department || 'Not specified'}</div>
-                  <div><strong>Contacts:</strong></div>
+                  <div><strong>Contacts:</strong> {selectedRecord.email && `📧 ${selectedRecord.email}`} {selectedRecord.phone && `📱 ${selectedRecord.phone}`} {!selectedRecord.email && !selectedRecord.phone && 'Not provided'}</div>
                   <div><strong>Record Date:</strong> {format(new Date(selectedRecord.created_at), 'PPP')}</div>
-                  <div><strong>Risk Level:</strong>
-                    <Badge variant="outline" className={`${getRiskColor(selectedRecord.risk_level)} ml-2`}>
-                      {(selectedRecord.risk_level || 'medium').toUpperCase()}
-                    </Badge>
-                  </div>
-                </div>
-                <div className="mt-2 text-sm">
-                  <div className="ml-0">
-                    {selectedRecord.email && <div>📧 {selectedRecord.email}</div>}
-                    {selectedRecord.phone && <div>📱 {selectedRecord.phone}</div>}
-                    {!selectedRecord.email && !selectedRecord.phone && <div className="text-muted-foreground">Not provided</div>}
-                  </div>
                 </div>
               </div>
 
-              {/* Diagnosis & Confidence */}
-              <div className="bg-green-50 p-4 rounded-lg">
-                <h3 className="font-semibold text-green-900 mb-3">AI Analysis Results</h3>
-                <div className="space-y-3">
-                  <div>
-                    <strong>Diagnosis:</strong> {selectedRecord.diagnosis}
-                  </div>
-                  <div>
-                    <strong>Confidence:</strong> {selectedRecord.confidence}%
-                  </div>
-                  <div>
-                    <strong>Medical Advice:</strong> {selectedRecord.advice}
-                  </div>
-                </div>
-              </div>
 
               {/* Actions */}
               <div className="flex justify-between items-center pt-4 border-t">
@@ -533,6 +607,199 @@ export function MedicalRecords() {
               </div>
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Analysis Detail Dialog */}
+      <Dialog open={!!selectedDetail} onOpenChange={() => setSelectedDetail(null)}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Stethoscope className="h-5 w-5" />
+              {selectedDetail?.type === 'general' && 'General Test Result'}
+              {selectedDetail?.type === 'cancer' && 'Cancer Risk Assessment'}
+              {selectedDetail?.type === 'hepatitis' && 'Hepatitis Analysis'}
+              {selectedDetail?.type === 'fatty_liver' && 'Fatty Liver Analysis'}
+            </DialogTitle>
+            <DialogDescription>
+              Detailed analysis results for {selectedDetail?.type?.replace('_', ' ')}
+            </DialogDescription>
+          </DialogHeader>
+
+          {selectedDetail && (
+            <div className="space-y-4">
+              {selectedDetail.type === 'general' && (
+                <div className="rounded-xl gradient-card p-4 md:p-5">
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="flex h-8 w-8 items-center justify-center rounded-lg gradient-primary animate-glow">
+                      <Activity className="h-4 w-4 text-primary-foreground" />
+                    </div>
+                    <h3 className="text-lg font-semibold gradient-text">General Test Result</h3>
+                  </div>
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="font-medium">Diagnosis:</span>
+                      <span className="px-3 py-1 rounded-full text-sm font-medium bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200">
+                        Potential Risk Detected
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="font-medium">Confidence:</span>
+                      <span className="text-sm">{selectedDetail.data.confidence ?? 0}%</span>
+                    </div>
+                    <div className="pt-2 border-t">
+                      <p className="text-sm text-muted-foreground">General Test indicates potential liver disease risk. Detailed analysis recommended for accurate diagnosis.</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {selectedDetail.type === 'hepatitis' && (
+                <div className="rounded-xl gradient-card p-4 md:p-5">
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="flex h-8 w-8 items-center justify-center rounded-lg gradient-primary animate-glow">
+                      <Activity className="h-4 w-4 text-primary-foreground" />
+                    </div>
+                    <h3 className="text-lg font-semibold gradient-text">Hepatitis Analysis</h3>
+                  </div>
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-background/50">
+                          {selectedDetail.data.confidence >= 80 ? <CheckCircle2 className="h-4 w-4 text-green-600" /> :
+                            selectedDetail.data.confidence >= 60 ? <AlertCircle className="h-4 w-4 text-yellow-600" /> :
+                            <AlertCircle className="h-4 w-4 text-red-600" />}
+                        </div>
+                        <div>
+                          <p className="font-semibold text-sm">Stage {selectedDetail.data.stage ?? 0} ({selectedDetail.data.stage_description || 'Unknown'})</p>
+                          <p className="text-xs text-muted-foreground">Fibrosis Assessment</p>
+                        </div>
+                      </div>
+                      <Badge variant="outline" className={
+                        (selectedDetail.data.stage === 0 || selectedDetail.data.stage === 1) ? "bg-green-100 text-green-800 border-green-200" :
+                        selectedDetail.data.stage === 2 ? "bg-yellow-100 text-yellow-800 border-yellow-200" :
+                        "bg-red-100 text-red-800 border-red-200"
+                      } style={{ fontWeight: 'bold', fontSize: '12px' }}>
+                        Stage {selectedDetail.data.stage ?? 0}
+                      </Badge>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4 text-sm">
+                      <div>
+                        <p className="font-medium">Complications Risk</p>
+                        <p className="text-muted-foreground">{selectedDetail.data.complications_risk ?? 0}%</p>
+                      </div>
+                      <div>
+                        <p className="font-medium">Mortality Risk</p>
+                        <p className="text-muted-foreground">{selectedDetail.data.mortality_risk ?? 0}%</p>
+                      </div>
+                    </div>
+                    <div className="border-t pt-3">
+                      <p className="text-xs font-medium mb-2">Liver Function Scores</p>
+                      <div className="grid grid-cols-2 gap-4 text-xs">
+                        <div>
+                          <p className="font-medium">APRI Score</p>
+                          <p className="text-muted-foreground">{(selectedDetail.data.apri_score ?? 0).toFixed(2)}</p>
+                        </div>
+                        <div>
+                          <p className="font-medium">ALBI Score</p>
+                          <p className="text-muted-foreground">{(selectedDetail.data.albi_score ?? 0).toFixed(2)}</p>
+                        </div>
+                      </div>
+                    </div>
+                    <p className="text-sm text-muted-foreground">{selectedDetail.data.advice || "No advice available"}</p>
+                  </div>
+                </div>
+              )}
+
+              {selectedDetail.type === 'cancer' && (
+                <div className="rounded-xl gradient-card p-4 md:p-5">
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="flex h-8 w-8 items-center justify-center rounded-lg gradient-primary animate-glow">
+                      <Stethoscope className="h-4 w-4 text-primary-foreground" />
+                    </div>
+                    <h3 className="text-lg font-semibold gradient-text">Cancer Risk Assessment</h3>
+                  </div>
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-background/50">
+                          {selectedDetail.data.risk_percentage <= 10 ? <CheckCircle2 className="h-4 w-4 text-green-600" /> :
+                            selectedDetail.data.risk_percentage <= 40 ? <AlertCircle className="h-4 w-4 text-yellow-600" /> :
+                            selectedDetail.data.risk_percentage <= 50 ? <AlertCircle className="h-4 w-4 text-orange-600" /> :
+                            <AlertCircle className="h-4 w-4 text-red-600" />}
+                        </div>
+                        <div>
+                          <p className="font-semibold text-sm">Risk Level: {selectedDetail.data.risk_percentage?.toFixed(1) ?? 0}%</p>
+                          <p className="text-xs text-muted-foreground">5-Tier Assessment</p>
+                        </div>
+                      </div>
+                      <Badge variant="outline" className={
+                        selectedDetail.data.risk_percentage <= 10 ? "bg-green-100 text-green-800 border-green-200" :
+                        selectedDetail.data.risk_percentage <= 40 ? "bg-yellow-100 text-yellow-800 border-yellow-200" :
+                        selectedDetail.data.risk_percentage <= 50 ? "bg-orange-100 text-orange-800 border-orange-200" :
+                        "bg-red-100 text-red-800 border-red-200"
+                      } style={{ fontWeight: 'bold', fontSize: '12px' }}>
+                        {selectedDetail.data.risk_percentage?.toFixed(1) ?? 0}%
+                      </Badge>
+                    </div>
+                    <p className="text-sm text-muted-foreground">{selectedDetail.data.advice || "No advice available"}</p>
+                  </div>
+                </div>
+              )}
+
+              {selectedDetail.type === 'fatty_liver' && (
+                <div className="rounded-xl gradient-card p-4 md:p-5">
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="flex h-8 w-8 items-center justify-center rounded-lg gradient-primary animate-glow">
+                      <Activity className="h-4 w-4 text-primary-foreground" />
+                    </div>
+                    <h3 className="text-lg font-semibold gradient-text">Fatty Liver Analysis</h3>
+                  </div>
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-background/50">
+                          {selectedDetail.data.confidence >= 80 ? <CheckCircle2 className="h-4 w-4 text-green-600" /> :
+                            selectedDetail.data.confidence >= 60 ? <AlertCircle className="h-4 w-4 text-yellow-600" /> :
+                            <AlertCircle className="h-4 w-4 text-red-600" />}
+                        </div>
+                        <div>
+                          <p className="font-semibold text-sm">Grade {selectedDetail.data.grade ?? 0} ({selectedDetail.data.grade_description || 'Unknown'})</p>
+                          <p className="text-xs text-muted-foreground">Fatty Liver Assessment</p>
+                        </div>
+                      </div>
+                      <Badge variant="outline" className={
+                        (selectedDetail.data.grade === 0 || selectedDetail.data.grade === 1) ? "bg-green-100 text-green-800 border-green-200" :
+                        selectedDetail.data.grade === 2 ? "bg-yellow-100 text-yellow-800 border-yellow-200" :
+                        "bg-red-100 text-red-800 border-red-200"
+                      } style={{ fontWeight: 'bold', fontSize: '12px' }}>
+                        Grade {selectedDetail.data.grade ?? 0}
+                      </Badge>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4 text-sm">
+                      <div>
+                        <p className="font-medium">Progression Risk</p>
+                        <p className="text-muted-foreground">{selectedDetail.data.progression_risk ?? 0}%</p>
+                      </div>
+                      <div>
+                        <p className="font-medium">Complications Risk</p>
+                        <p className="text-muted-foreground">{selectedDetail.data.complications_risk ?? 0}%</p>
+                      </div>
+                    </div>
+                    <p className="text-sm text-muted-foreground">{selectedDetail.data.advice || "No advice available"}</p>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          <Separator className="my-4" />
+
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" onClick={() => setSelectedDetail(null)}>
+              Close
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
     </div>

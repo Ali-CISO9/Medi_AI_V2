@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server"
 
-const BACKEND_URL = process.env.BACKEND_URL || "http://localhost:8001"
+const BACKEND_URL = process.env.BACKEND_URL || "http://localhost:8000"
 
 export async function PUT(request: Request, { params }: { params: Promise<{ patient_id: string }> }) {
   try {

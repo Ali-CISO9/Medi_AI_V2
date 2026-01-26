@@ -1,9 +1,11 @@
 from fastapi import FastAPI, File, UploadFile, Form, HTTPException, Depends, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.exceptions import RequestValidationError
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 import os
 from dotenv import load_dotenv
-from typing import Optional, List
+from typing import Optional, List, Union, Any, Dict
 import json
 import requests
 from datetime import datetime
@@ -46,6 +48,11 @@ Base.metadata.create_all(bind=engine)
 # Initialize FastAPI app
 app = FastAPI(title="Medical AI Backend", version="1.0.0")
 
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request, exc):
+    print(f"VALIDATION ERROR DETAILS: {exc.errors()}") # Prints exact failure to console
+    return JSONResponse(status_code=422, content={"detail": exc.errors()})
+
 # CORS middleware
 app.add_middleware(
     CORSMiddleware,
@@ -87,6 +94,14 @@ class PatientResponse(BaseModel):
     patient: PatientData
     labTests: List[LabTestResponse]
     recentVisits: List[Visit]
+
+class SaveReportRequest(BaseModel):
+    patient_id: Any
+    diagnosis: Any
+    confidence: Any
+    advice: Any
+    risk_level: Any
+    detailed_results: Any
 
 # Initialize Hugging Face API
 HUGGINGFACE_API_TOKEN = os.getenv("HUGGINGFACE_API_TOKEN")
@@ -223,6 +238,50 @@ async def analyze_patient(user_profile: dict, db: Session = Depends(get_db)):
         print(f"CRITICAL BACKEND CRASH:\n{clean_error}")
         # Return a 400 so the Frontend sees the actual error message
         raise HTTPException(status_code=400, detail=error_message)
+
+@app.post("/reports")
+async def create_report(report: SaveReportRequest, db: Session = Depends(get_db)):
+    try:
+        print(f"DEBUG: Received Report Payload: {report}")
+        # Check if patient exists
+        patient_id = report.patient_id
+        if not patient_id:
+            raise HTTPException(status_code=400, detail="Patient ID required")
+        patient = db.query(Patient).filter(Patient.id == patient_id).first()
+        if not patient:
+            raise HTTPException(status_code=404, detail="Patient not found")
+
+        # Sanitize the inputs to remove NumPy types
+        clean_results = make_serializable(report.detailed_results)
+
+        print("DEBUG: Attempting to add to DB session...")
+        # Create new report
+        new_report = MedicalReport(
+            patient_id=patient_id,
+            diagnosis=report.diagnosis,
+            confidence=float(report.confidence),  # Explicit cast to float
+            advice=report.advice,
+            risk_level=report.risk_level,
+            detailed_results=json.dumps(clean_results)  # Save the SANITIZED version
+        )
+        db.add(new_report)
+        print("DEBUG: Committing to Database...")
+        try:
+            db.commit()
+        except Exception as e:
+            print(f"DB ERROR: {str(e)}")
+            raise
+        db.refresh(new_report)
+
+        return {"success": True, "report_id": new_report.id}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        import traceback
+        print(f"CRITICAL ERROR SAVING REPORT: {str(e)}")
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail="Database error")
 
 
 @app.get("/patient-data")
@@ -381,18 +440,74 @@ async def get_patients(request: Request, db: Session = Depends(get_db)):
         print(f"Database error in get_patients: {e}")
         raise HTTPException(status_code=500, detail="Database error")
 
-@app.put("/patients/{patient_id}")
-async def update_patient(patient_id: str, patient_data: dict = None, db: Session = Depends(get_db)):
+@app.put("/patients/{patient_id}/archive")
+async def archive_patient(patient_id: str, db: Session = Depends(get_db)):
     try:
-        # Find patient by patient_id (string field)
-        patient = db.query(Patient).filter(Patient.patient_id == patient_id).first()
-
+        # Find the patient by database ID (integer)
+        patient_id_int = int(patient_id)
+        patient = db.query(Patient).filter(Patient.id == patient_id_int).first()
         if not patient:
             raise HTTPException(status_code=404, detail="Patient not found")
 
-        # Track if status is being changed from archived to active
-        old_status = patient.status
-        new_status = patient_data.get("status", old_status)
+        if patient.status == "archived":
+            raise HTTPException(status_code=400, detail="Patient is already archived")
+
+        # Archive the patient and analyses
+        patient.status = "archived"
+        analyses_to_archive = db.query(MedicalReport).filter(MedicalReport.patient_id == patient.id).all()
+        for analysis in analyses_to_archive:
+            analysis.status = "archived"
+
+        db.commit()
+
+        return {"success": True, "message": f"Patient and {len(analyses_to_archive)} analyses archived successfully"}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Database error in archive_patient: {e}")
+        raise HTTPException(status_code=500, detail="Database error")
+
+@app.put("/patients/{patient_id}/restore")
+async def restore_patient(patient_id: str, db: Session = Depends(get_db)):
+    try:
+        # Find the patient by database ID (integer)
+        patient_id_int = int(patient_id)
+        patient = db.query(Patient).filter(Patient.id == patient_id_int).first()
+        if not patient:
+            raise HTTPException(status_code=404, detail="Patient not found")
+
+        if patient.status == "active":
+            raise HTTPException(status_code=400, detail="Patient is already active")
+
+        # Restore the patient and analyses
+        patient.status = "active"
+        analyses_to_restore = db.query(MedicalReport).filter(
+            MedicalReport.patient_id == patient.id,
+            MedicalReport.status == "archived"
+        ).all()
+        for analysis in analyses_to_restore:
+            analysis.status = "active"
+
+        db.commit()
+
+        return {"success": True, "message": f"Patient and {len(analyses_to_restore)} analyses restored successfully"}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Database error in restore_patient: {e}")
+        raise HTTPException(status_code=500, detail="Database error")
+
+@app.put("/patients/{patient_id}")
+async def update_patient(patient_id: str, patient_data: dict = None, db: Session = Depends(get_db)):
+    try:
+        # Find patient by database ID (integer)
+        patient_id_int = int(patient_id)
+        patient = db.query(Patient).filter(Patient.id == patient_id_int).first()
+
+        if not patient:
+            raise HTTPException(status_code=404, detail="Patient not found")
 
         # Update patient fields
         if "name" in patient_data:
@@ -411,27 +526,9 @@ async def update_patient(patient_id: str, patient_data: dict = None, db: Session
             patient.department = patient_data["department"]
         if "doctor_name" in patient_data:
             patient.doctor_name = patient_data["doctor_name"]
-        if "status" in patient_data:
-            patient.status = patient_data["status"]
-
-        # If restoring patient from archived to active, also restore their analyses
-        if old_status == "archived" and new_status == "active":
-            analyses_to_restore = db.query(MedicalReport).filter(
-                MedicalReport.patient_id == patient.id,
-                MedicalReport.status == "archived"
-            ).all()
-            for analysis in analyses_to_restore:
-                analysis.status = "active"
-            restored_count = len(analyses_to_restore)
-        else:
-            restored_count = 0
 
         db.commit()
         db.refresh(patient)
-
-        message = "Patient updated successfully"
-        if restored_count > 0:
-            message += f" and {restored_count} analyses restored"
 
         return {"success": True, "patient": {
             "id": patient.id,
@@ -444,7 +541,7 @@ async def update_patient(patient_id: str, patient_data: dict = None, db: Session
             "department": patient.department,
             "doctor_name": patient.doctor_name,
             "status": patient.status
-        }, "message": message}
+        }, "message": "Patient updated successfully"}
 
     except HTTPException:
         raise
@@ -453,30 +550,31 @@ async def update_patient(patient_id: str, patient_data: dict = None, db: Session
         raise HTTPException(status_code=500, detail="Database error")
 
 @app.delete("/patients/{patient_id}")
-async def archive_patient(patient_id: str, db: Session = Depends(get_db)):
+async def delete_patient(patient_id: str, db: Session = Depends(get_db)):
     try:
-        # Find patient by patient_id (string field)
-        patient = db.query(Patient).filter(Patient.patient_id == patient_id).first()
-
+        # Find the patient by database ID (integer)
+        patient_id_int = int(patient_id)
+        patient = db.query(Patient).filter(Patient.id == patient_id_int).first()
         if not patient:
             raise HTTPException(status_code=404, detail="Patient not found")
 
-        # Archive the patient instead of deleting
-        patient.status = "archived"
+        if patient.status == "active":
+            raise HTTPException(status_code=400, detail="Cannot delete active patient. Archive first.")
 
-        # Also archive all analyses for this patient
-        analyses_to_archive = db.query(MedicalReport).filter(MedicalReport.patient_id == patient.id).all()
-        for analysis in analyses_to_archive:
-            analysis.status = "archived"
+        # Permanently delete the patient and analyses
+        # CASCADE DELETE: Remove reports first
+        db.query(MedicalReport).filter(MedicalReport.patient_id == patient.id).delete()
+        # NOW delete the patient
+        db.delete(patient)
 
         db.commit()
 
-        return {"success": True, "message": f"Patient and {len(analyses_to_archive)} analyses archived successfully"}
+        return {"success": True, "message": "Patient and all associated analyses permanently deleted"}
 
     except HTTPException:
         raise
     except Exception as e:
-        print(f"Database error in archive_patient: {e}")
+        print(f"Database error in delete_patient: {e}")
         raise HTTPException(status_code=500, detail="Database error")
 
 @app.post("/patients")
@@ -586,6 +684,7 @@ async def get_patient_analyses(request: Request, db: Session = Depends(get_db)):
                 "status": analysis.status,
                 "is_finalized": bool(analysis.is_finalized),
                 "risk_level": risk_level,
+                "detailed_results": analysis.detailed_results,
                 "created_at": analysis.created_at.isoformat() if analysis.created_at else None,
                 "updated_at": analysis.updated_at.isoformat() if analysis.updated_at else analysis.created_at.isoformat() if analysis.created_at else None,
                 "patient_name": patient.name if patient else "Unknown",

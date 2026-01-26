@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 from database import get_db
-from models import Patient, MedicalReport
+from models import Patient, MedicalReport, LabTest
 
 def cleanup_patients():
     try:
@@ -12,19 +12,24 @@ def cleanup_patients():
         for p in patients:
             print(f"  DB ID: {p.id}, Patient ID: {p.patient_id}, Name: {p.name}")
 
-        print("\nDeleting patients except ID 11...")
-        patients_to_delete = db.query(Patient).filter(Patient.patient_id != '11').all()
+        print("\nCurrent medical reports:")
+        reports = db.query(MedicalReport).all()
+        for r in reports:
+            print(f"  Report ID: {r.id}, Patient ID: {r.patient_id}, Diagnosis: {r.diagnosis}")
+
+        print("\nCurrent lab tests:")
+        lab_tests = db.query(LabTest).all()
+        for lt in lab_tests:
+            print(f"  Lab Test ID: {lt.id}, Patient ID: {lt.patient_id}, Test: {lt.test_name}")
+
+        print("\nDeleting ALL patients and their associated data...")
+        patients_to_delete = db.query(Patient).all()
 
         deleted_count = 0
         for patient in patients_to_delete:
-            print(f"Deleting: {patient.name} (Patient ID: {patient.patient_id})")
+            print(f"Deleting: {patient.name} (Patient ID: {patient.patient_id}, DB ID: {patient.id})")
 
-            # Delete associated reports first
-            reports = db.query(MedicalReport).filter(MedicalReport.patient_id == patient.id).all()
-            for report in reports:
-                print(f"  Deleting associated report ID {report.id}")
-                db.delete(report)
-
+            # The cascade delete should handle associated reports and lab tests
             db.delete(patient)
             deleted_count += 1
 
@@ -40,6 +45,11 @@ def cleanup_patients():
         reports = db.query(MedicalReport).all()
         for r in reports:
             print(f"  Report ID: {r.id}, Patient ID: {r.patient_id}, Diagnosis: {r.diagnosis}")
+
+        print("\nRemaining lab tests:")
+        lab_tests = db.query(LabTest).all()
+        for lt in lab_tests:
+            print(f"  Lab Test ID: {lt.id}, Patient ID: {lt.patient_id}, Test: {lt.test_name}")
 
     except Exception as e:
         print(f"Error during cleanup: {e}")

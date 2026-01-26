@@ -38,9 +38,10 @@ interface HepatitisInputProps {
   gateData: GateData
   onAnalysisComplete: (result: any) => void
   presetData?: Record<string, string>
+  setHepatitisInput?: (input: any) => void
 }
 
-export function HepatitisInput({ gateData, onAnalysisComplete, presetData }: HepatitisInputProps) {
+export function HepatitisInput({ gateData, onAnalysisComplete, presetData, setHepatitisInput }: HepatitisInputProps) {
   const [hepatitisForm, setHepatitisForm] = useState<HepatitisFormData>({
     // Clinical Labs - defaults
     platelets: '',
@@ -82,7 +83,7 @@ export function HepatitisInput({ gateData, onAnalysisComplete, presetData }: Hep
   // Clinical lab metadata for units and ranges
   const clinicalLabMetadata = {
     platelets: { unit: '×10³/µL', range: '150-450', label: 'Platelets' },
-    prothrombin: { unit: 'seconds', range: '11-13', label: 'Prothrombin Time' },
+    prothrombin: { unit: '', range: '11s-13s', label: 'Prothrombin Time' },
     inr: { unit: '', range: '0.8-1.1', label: 'INR' },
     cholesterol: { unit: 'mg/dL', range: '<200', label: 'Cholesterol' },
     triglycerides: { unit: 'mg/dL', range: '<150', label: 'Triglycerides' },
@@ -140,6 +141,22 @@ export function HepatitisInput({ gateData, onAnalysisComplete, presetData }: Hep
     if (!validateForm()) return
 
     setIsAnalyzing(true)
+
+    // Set hepatitis input for persistence
+    if (setHepatitisInput) {
+      setHepatitisInput({
+        Platelets: hepatitisForm.platelets,
+        Prothrombin: hepatitisForm.prothrombin,
+        INR: hepatitisForm.inr,
+        Cholesterol: hepatitisForm.cholesterol,
+        Triglycerides: hepatitisForm.triglycerides,
+        Copper: hepatitisForm.copper,
+        Hepatomegaly: hepatitisForm.hepatomegaly ? 'Yes' : 'No',
+        Spiders: hepatitisForm.spiders ? 'Yes' : 'No',
+        Edema: hepatitisForm.edema ? 'Yes' : 'No',
+        Ascites: hepatitisForm.ascites ? 'Yes' : 'No'
+      })
+    }
 
     try {
       // Map gate data to backend's expected short key names
@@ -215,13 +232,13 @@ export function HepatitisInput({ gateData, onAnalysisComplete, presetData }: Hep
         {/* Section A: Clinical Labs */}
         <div className="space-y-4">
           <h4 className="text-sm font-medium text-muted-foreground">Clinical Labs</h4>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 gap-3">
             {Object.entries(clinicalLabMetadata).map(([key, metadata]) => (
-              <div key={key} className="space-y-2">
+              <div key={key} className="space-y-1.5">
                 <Label className="text-sm font-medium">
                   {metadata.label}
                   <span className="text-xs text-muted-foreground ml-1">
-                    ({metadata.unit}) - Normal: {metadata.range}
+                    {metadata.unit && `(${metadata.unit}) - `}Normal: {metadata.range}
                   </span>
                 </Label>
                 <Input
@@ -230,7 +247,7 @@ export function HepatitisInput({ gateData, onAnalysisComplete, presetData }: Hep
                   value={hepatitisForm[key as keyof HepatitisFormData] as string}
                   onChange={(e) => handleNumberInputChange(key as keyof HepatitisFormData, e.target.value)}
                   placeholder={`Enter ${metadata.label.toLowerCase()}`}
-                  className="text-sm"
+                  className="text-sm h-10"
                   disabled={isAnalyzing}
                 />
               </div>
@@ -243,9 +260,12 @@ export function HepatitisInput({ gateData, onAnalysisComplete, presetData }: Hep
         {/* Section B: Physical Signs */}
         <div className="space-y-4">
           <h4 className="text-sm font-medium text-muted-foreground">Physical Symptoms</h4>
-          <div className="grid grid-cols-2 gap-4">
-            <div className="flex items-center justify-between p-3 border rounded-lg">
-              <Label className="text-sm font-medium">Hepatomegaly (Enlarged Liver)</Label>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="h-full min-h-[4rem] flex items-center justify-between p-3 rounded-xl border">
+              <div className="flex flex-col items-start text-left">
+                <span className="text-sm font-medium text-slate-700">Hepatomegaly</span>
+                <span className="text-xs text-slate-500">(Enlarged Liver)</span>
+              </div>
               <Switch
                 checked={hepatitisForm.hepatomegaly}
                 onCheckedChange={(checked) => handleSwitchChange('hepatomegaly', checked)}
@@ -254,8 +274,11 @@ export function HepatitisInput({ gateData, onAnalysisComplete, presetData }: Hep
               />
             </div>
 
-            <div className="flex items-center justify-between p-3 border rounded-lg">
-              <Label className="text-sm font-medium">Spider Angiomas</Label>
+            <div className="h-full min-h-[4rem] flex items-center justify-between p-3 rounded-xl border">
+              <div className="flex flex-col items-start text-left">
+                <span className="text-sm font-medium text-slate-700">Spider Angiomas</span>
+                <span className="text-xs text-slate-500">(Skin Lesions)</span>
+              </div>
               <Switch
                 checked={hepatitisForm.spiders}
                 onCheckedChange={(checked) => handleSwitchChange('spiders', checked)}
@@ -264,8 +287,11 @@ export function HepatitisInput({ gateData, onAnalysisComplete, presetData }: Hep
               />
             </div>
 
-            <div className="flex items-center justify-between p-3 border rounded-lg">
-              <Label className="text-sm font-medium">Edema (Fluid Retention)</Label>
+            <div className="h-full min-h-[4rem] flex items-center justify-between p-3 rounded-xl border">
+              <div className="flex flex-col items-start text-left">
+                <span className="text-sm font-medium text-slate-700">Edema</span>
+                <span className="text-xs text-slate-500">(Fluid Retention)</span>
+              </div>
               <Switch
                 checked={hepatitisForm.edema}
                 onCheckedChange={(checked) => handleSwitchChange('edema', checked)}
@@ -274,8 +300,11 @@ export function HepatitisInput({ gateData, onAnalysisComplete, presetData }: Hep
               />
             </div>
 
-            <div className="flex items-center justify-between p-3 border rounded-lg">
-              <Label className="text-sm font-medium">Ascites (Abdominal Fluid)</Label>
+            <div className="h-full min-h-[4rem] flex items-center justify-between p-3 rounded-xl border">
+              <div className="flex flex-col items-start text-left">
+                <span className="text-sm font-medium text-slate-700">Ascites</span>
+                <span className="text-xs text-slate-500">(Abdominal Fluid)</span>
+              </div>
               <Switch
                 checked={hepatitisForm.ascites}
                 onCheckedChange={(checked) => handleSwitchChange('ascites', checked)}
@@ -318,6 +347,9 @@ export function HepatitisInput({ gateData, onAnalysisComplete, presetData }: Hep
                 edema: false,
                 ascites: false,
               })
+              if (setHepatitisInput) {
+                setHepatitisInput(null) // Clear persisted hepatitis input
+              }
             }}
             className="border-blue-200 text-blue-600 hover:bg-blue-50"
           >

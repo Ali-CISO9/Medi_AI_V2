@@ -50,6 +50,7 @@ class MedicalReport(Base):
     status = Column(String(20), nullable=False, default="active")  # active, archived, finalized
     is_finalized = Column(Integer, nullable=False, default=0)  # 0=false, 1=true
     risk_level = Column(String(20), nullable=True)  # high, medium, low
+    detailed_results = Column(Text, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 

@@ -17,7 +17,7 @@ import { HepatitisInput } from "@/components/hepatitis-input"
 
 
 export function AiRadiologyScan() {
-  const { setResult, setInput, setAnalysisOrder, result } = useAnalysis()
+  const { setResult, setInput, setCancerInput, setFattyLiverInput, setHepatitisInput, setAnalysisOrder, result, input, cancerInput, fattyLiverInput, hepatitisInput } = useAnalysis()
   const [isUploading, setIsUploading] = useState(false)
   const [gateResult, setGateResult] = useState<any>(null)
   const [gateExpanded, setGateExpanded] = useState(true)
@@ -128,6 +128,53 @@ export function AiRadiologyScan() {
     hdl: 'HDL',
   })
 
+  // Load manual values, gate result, and UI state from sessionStorage on mount
+  useEffect(() => {
+    const savedInputs = sessionStorage.getItem("analysis_inputs")
+    if (savedInputs) {
+      try {
+        setManualValues(JSON.parse(savedInputs))
+      } catch (e) {
+        console.error("Failed to parse saved inputs", e)
+      }
+    }
+
+    const savedGate = sessionStorage.getItem("gate_result")
+    if (savedGate) {
+      try {
+        setGateResult(JSON.parse(savedGate))
+      } catch (e) {
+        console.error("Failed to parse saved gate result", e)
+      }
+    }
+
+    const savedExpanded = sessionStorage.getItem("gate_expanded")
+    if (savedExpanded !== null) {
+      try {
+        setGateExpanded(JSON.parse(savedExpanded))
+      } catch (e) {
+        console.error("Failed to parse saved gate expanded", e)
+      }
+    } else if (result) {
+      // Default to collapsed if result exists and no saved state
+      setGateExpanded(false)
+    }
+  }, [result])
+
+  // Save manual values to sessionStorage whenever they change
+  useEffect(() => {
+    sessionStorage.setItem("analysis_inputs", JSON.stringify(manualValues))
+  }, [manualValues])
+
+  // Save gate result to sessionStorage whenever it changes
+  useEffect(() => {
+    if (gateResult) {
+      sessionStorage.setItem("gate_result", JSON.stringify(gateResult))
+    } else {
+      sessionStorage.removeItem("gate_result")
+    }
+  }, [gateResult])
+
   // Reset component state when analysis result is cleared
   useEffect(() => {
     if (result === null) {
@@ -170,8 +217,81 @@ export function AiRadiologyScan() {
         uric_acid: '',
         hdl: '',
       })
+      sessionStorage.removeItem("analysis_inputs")
+      sessionStorage.removeItem("gate_result")
+      sessionStorage.removeItem("gate_expanded")
     }
   }, [result])
+
+  // Sync manualValues with input when input changes
+  useEffect(() => {
+    if (input) {
+      setManualValues(prev => ({
+        ...prev,
+        age: input.Age,
+        gender: input.Gender,
+        bilirubin: input.Bilirubin,
+        bilirubin_direct: input.DirectBilirubin,
+        alp: input.AlkPhos,
+        alt: input.ALT,
+        ast: input.AST,
+        total_proteins: input.TP,
+        albumin: input.ALB,
+        ag_ratio: input.AG,
+        ggt: input.GGT
+      }))
+    }
+  }, [input])
+
+  // Sync manualValues with cancerInput when cancerInput changes
+  useEffect(() => {
+    if (cancerInput) {
+      setManualValues(prev => ({
+        ...prev,
+        bmi: cancerInput.BMI,
+        smoking: cancerInput.Smoking,
+        alcohol: cancerInput.Alcohol,
+        activity: cancerInput.Activity,
+        genetic_risk: cancerInput.GeneticRisk,
+        cancer_history: cancerInput.CancerHistory
+      }))
+    }
+  }, [cancerInput])
+
+  // Sync manualValues with fattyLiverInput when fattyLiverInput changes
+  useEffect(() => {
+    if (fattyLiverInput) {
+      setManualValues(prev => ({
+        ...prev,
+        cholesterol: fattyLiverInput.Cholesterol,
+        creatinine: fattyLiverInput.Creatinine,
+        glucose: fattyLiverInput.Glucose,
+        ggt: fattyLiverInput.GGT,
+        triglycerides: fattyLiverInput.Triglycerides,
+        uric_acid: fattyLiverInput.UricAcid,
+        platelets: fattyLiverInput.Platelets,
+        hdl: fattyLiverInput.HDL
+      }))
+    }
+  }, [fattyLiverInput])
+
+  // Sync hepatitisPresetData with hepatitisInput when hepatitisInput changes
+  useEffect(() => {
+    if (hepatitisInput) {
+      setHepatitisPresetData({
+        platelets: hepatitisInput.Platelets,
+        prothrombin: hepatitisInput.Prothrombin,
+        inr: hepatitisInput.INR,
+        cholesterol: hepatitisInput.Cholesterol,
+        triglycerides: hepatitisInput.Triglycerides,
+        copper: hepatitisInput.Copper,
+        hepatomegaly: hepatitisInput.Hepatomegaly,
+        spiders: hepatitisInput.Spiders,
+        edema: hepatitisInput.Edema,
+        ascites: hepatitisInput.Ascites
+      })
+    }
+  }, [hepatitisInput])
 
   // Field metadata for better UX
   const fieldMetadata: Record<string, { unit: string; range: string; description: string }> = {
@@ -229,6 +349,16 @@ export function AiRadiologyScan() {
     setIsUploading(true)
 
     try {
+      // Set cancer input in context for persistence
+      setCancerInput({
+        BMI: manualValues['bmi'] || '',
+        Smoking: manualValues['smoking'] || '',
+        Alcohol: manualValues['alcohol'] || '',
+        Activity: manualValues['activity'] || '',
+        GeneticRisk: manualValues['genetic_risk'] || '',
+        CancerHistory: manualValues['cancer_history'] || ''
+      })
+
       // Construct payload with mode 'cancer' and merge gate + cancer data
       const payload: Record<string, any> = { mode: 'cancer' }
 
@@ -324,6 +454,18 @@ export function AiRadiologyScan() {
     setIsUploading(true)
 
     try {
+      // Set fatty liver input in context for persistence
+      setFattyLiverInput({
+        Cholesterol: manualValues['cholesterol'] || '',
+        Creatinine: manualValues['creatinine'] || '',
+        Glucose: manualValues['glucose'] || '',
+        GGT: manualValues['ggt'] || '',
+        Triglycerides: manualValues['triglycerides'] || '',
+        UricAcid: manualValues['uric_acid'] || '',
+        Platelets: manualValues['platelets'] || '',
+        HDL: manualValues['hdl'] || ''
+      })
+
       // Construct payload with mode 'fatty_liver' and merge gate + fatty liver data
       const payload: Record<string, any> = { mode: 'fatty_liver' }
 
@@ -445,6 +587,21 @@ export function AiRadiologyScan() {
           } else {
             payload[backendKey] = manualValues[key]
           }
+        })
+
+        // Set input in context for persistence
+        setInput({
+          ALT: manualValues['alt'] || '',
+          AST: manualValues['ast'] || '',
+          Bilirubin: manualValues['bilirubin'] || '',
+          DirectBilirubin: manualValues['bilirubin_direct'] || '',
+          GGT: manualValues['ggt'] || '',
+          Age: manualValues['age'] || '',
+          Gender: manualValues['gender'] || '',
+          AlkPhos: manualValues['alp'] || '',
+          TP: manualValues['total_proteins'] || '',
+          ALB: manualValues['albumin'] || '',
+          AG: manualValues['ag_ratio'] || ''
         })
 
         console.log('Sending gate payload:', payload)
@@ -649,21 +806,18 @@ export function AiRadiologyScan() {
         <Tabs defaultValue="manual" className="w-full">
           <TabsContent value="manual" className="space-y-4 md:space-y-6" id="manual-panel" role="tabpanel" aria-labelledby="manual-tab">
             <div className="space-y-4">
-              {/* Hide this card if gate analysis detected a sick patient */}
-              {!(gateResult && gateResult.diagnosis !== 'Healthy') && (
-                <Card className="gradient-card">
-                  <CardHeader>
-                    <CardTitle className="text-lg md:text-xl">Liver Disease Detection</CardTitle>
-                    <p className="text-sm text-muted-foreground">
-                      Using AI models to screen for liver disease risk and provide detailed analysis
-                    </p>
-                  </CardHeader>
-                </Card>
-              )}
+              <Card className="gradient-card">
+                <CardHeader>
+                  <CardTitle className="text-lg md:text-xl">Liver Disease Detection</CardTitle>
+                  <p className="text-sm text-muted-foreground">
+                    Using AI models to screen for liver disease risk and provide detailed analysis
+                  </p>
+                </CardHeader>
+              </Card>
 
               {/* Scrollable Form Container */}
               <div className="max-h-[60vh] overflow-y-auto space-y-6 pr-2">
-                {/* Gate Screening Form - Always visible */}
+                {/* Gate Screening Form */}
                 <Card className="gradient-card">
                   <CardHeader className="pb-1">
                     <div className="flex items-center justify-between">
@@ -1001,6 +1155,7 @@ export function AiRadiologyScan() {
                                   resetData[field] = ''
                                 })
                                 setManualValues(prev => ({ ...prev, ...resetData }))
+                                setCancerInput(null) // Clear persisted cancer input
                               }}
                               className="border-red-200 text-red-600 hover:bg-red-50"
                             >
@@ -1022,6 +1177,7 @@ export function AiRadiologyScan() {
                               albumin: Number(manualValues['albumin']) || 0,
                             }}
                             presetData={hepatitisPresetData}
+                            setHepatitisInput={setHepatitisInput}
                             onAnalysisComplete={(responseData) => {
                               // Handle hepatitis analysis result
                               console.log('Hepatitis analysis result:', responseData)
@@ -1080,7 +1236,7 @@ export function AiRadiologyScan() {
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             {/* Albumin */}
                             <div className="space-y-2">
-                              <Label className="text-sm font-medium">Albumin (g/dL) <span className="text-xs text-muted-foreground">(General Test(not changable))</span></Label>
+                              <Label className="text-sm font-medium">Albumin <span className="text-xs text-slate-500">- (g/dL)</span></Label>
                               <Input
                                 type="number"
                                 step="0.1"
@@ -1094,7 +1250,7 @@ export function AiRadiologyScan() {
 
                             {/* ALP */}
                             <div className="space-y-2">
-                              <Label className="text-sm font-medium">ALP (IU/L) <span className="text-xs text-muted-foreground">(General Test(not changable))</span></Label>
+                              <Label className="text-sm font-medium">ALP <span className="text-xs text-slate-500">- (IU/L)</span></Label>
                               <Input
                                 type="number"
                                 value={manualValues['alp'] || ''}
@@ -1107,7 +1263,7 @@ export function AiRadiologyScan() {
 
                             {/* AST */}
                             <div className="space-y-2">
-                              <Label className="text-sm font-medium">AST (IU/L) <span className="text-xs text-muted-foreground">(General Test(not changable))</span></Label>
+                              <Label className="text-sm font-medium">AST <span className="text-xs text-slate-500">- (IU/L)</span></Label>
                               <Input
                                 type="number"
                                 value={manualValues['ast'] || ''}
@@ -1120,7 +1276,7 @@ export function AiRadiologyScan() {
 
                             {/* ALT */}
                             <div className="space-y-2">
-                              <Label className="text-sm font-medium">ALT (IU/L) <span className="text-xs text-muted-foreground">(General Test(not changable))</span></Label>
+                              <Label className="text-sm font-medium">ALT <span className="text-xs text-slate-500">- (IU/L)</span></Label>
                               <Input
                                 type="number"
                                 value={manualValues['alt'] || ''}
@@ -1133,7 +1289,7 @@ export function AiRadiologyScan() {
 
                             {/* Cholesterol */}
                             <div className="space-y-2">
-                              <Label className="text-sm font-medium">Cholesterol (mg/dL)</Label>
+                              <Label className="text-sm font-medium">Cholesterol <span className="text-xs text-slate-500">- (mg/dL)</span></Label>
                               <Input
                                 type="number"
                                 value={manualValues['cholesterol'] || ''}
@@ -1145,7 +1301,7 @@ export function AiRadiologyScan() {
 
                             {/* Creatinine */}
                             <div className="space-y-2">
-                              <Label className="text-sm font-medium">Creatinine (mg/dL)</Label>
+                              <Label className="text-sm font-medium">Creatinine <span className="text-xs text-slate-500">- (mg/dL)</span></Label>
                               <Input
                                 type="number"
                                 step="0.1"
@@ -1158,7 +1314,7 @@ export function AiRadiologyScan() {
 
                             {/* Glucose */}
                             <div className="space-y-2">
-                              <Label className="text-sm font-medium">Glucose (mg/dL)</Label>
+                              <Label className="text-sm font-medium">Glucose <span className="text-xs text-slate-500">- (mg/dL)</span></Label>
                               <Input
                                 type="number"
                                 value={manualValues['glucose'] || ''}
@@ -1170,7 +1326,7 @@ export function AiRadiologyScan() {
 
                             {/* GGT */}
                             <div className="space-y-2">
-                              <Label className="text-sm font-medium">GGT (IU/L)</Label>
+                              <Label className="text-sm font-medium">GGT <span className="text-xs text-slate-500">- (IU/L)</span></Label>
                               <Input
                                 type="number"
                                 value={manualValues['ggt'] || ''}
@@ -1182,7 +1338,7 @@ export function AiRadiologyScan() {
 
                             {/* Bilirubin */}
                             <div className="space-y-2">
-                              <Label className="text-sm font-medium">Total Bilirubin (mg/dL) <span className="text-xs text-muted-foreground">(General Test(not changable))</span></Label>
+                              <Label className="text-sm font-medium">Total Bilirubin <span className="text-xs text-slate-500">- (mg/dL)</span></Label>
                               <Input
                                 type="number"
                                 step="0.1"
@@ -1196,7 +1352,7 @@ export function AiRadiologyScan() {
 
                             {/* Triglycerides */}
                             <div className="space-y-2">
-                              <Label className="text-sm font-medium">Triglycerides (mg/dL)</Label>
+                              <Label className="text-sm font-medium">Triglycerides <span className="text-xs text-slate-500">- (mg/dL)</span></Label>
                               <Input
                                 type="number"
                                 value={manualValues['triglycerides'] || ''}
@@ -1208,7 +1364,7 @@ export function AiRadiologyScan() {
 
                             {/* Uric Acid */}
                             <div className="space-y-2">
-                              <Label className="text-sm font-medium">Uric Acid (mg/dL)</Label>
+                              <Label className="text-sm font-medium">Uric Acid <span className="text-xs text-slate-500">- (mg/dL)</span></Label>
                               <Input
                                 type="number"
                                 step="0.1"
@@ -1221,7 +1377,7 @@ export function AiRadiologyScan() {
 
                             {/* Platelets */}
                             <div className="space-y-2">
-                              <Label className="text-sm font-medium">Platelets (×10³/µL)</Label>
+                              <Label className="text-sm font-medium">Platelets <span className="text-xs text-slate-500">- (×10³/µL)</span></Label>
                               <Input
                                 type="number"
                                 value={manualValues['platelets'] || ''}
@@ -1233,7 +1389,7 @@ export function AiRadiologyScan() {
 
                             {/* HDL */}
                             <div className="space-y-2">
-                              <Label className="text-sm font-medium">HDL (mg/dL)</Label>
+                              <Label className="text-sm font-medium">HDL <span className="text-xs text-slate-500">- (mg/dL)</span></Label>
                               <Input
                                 type="number"
                                 value={manualValues['hdl'] || ''}
@@ -1272,6 +1428,7 @@ export function AiRadiologyScan() {
                                   resetData[field] = ''
                                 })
                                 setManualValues(prev => ({ ...prev, ...resetData }))
+                                setFattyLiverInput(null) // Clear persisted fatty liver input
                               }}
                               className="border-green-200 text-green-600 hover:bg-green-50"
                             >

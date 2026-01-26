@@ -1,6 +1,6 @@
 "use client"
 
-import React, { createContext, useContext, useState, ReactNode, useCallback } from 'react'
+import React, { createContext, useContext, useState, ReactNode, useCallback, useEffect } from 'react'
 
 interface AnalysisResult {
   diagnosis?: string
@@ -18,12 +18,47 @@ interface AnalysisInput {
   ALT: string
   AST: string
   Bilirubin: string
+  DirectBilirubin: string
   GGT: string
   Age: string
   Gender: string
   AlkPhos: string
   TP: string
   ALB: string
+  AG: string
+}
+
+interface CancerInput {
+  BMI: string
+  Smoking: string
+  Alcohol: string
+  Activity: string
+  GeneticRisk: string
+  CancerHistory: string
+}
+
+interface FattyLiverInput {
+  Cholesterol: string
+  Creatinine: string
+  Glucose: string
+  GGT: string
+  Triglycerides: string
+  UricAcid: string
+  Platelets: string
+  HDL: string
+}
+
+interface HepatitisInput {
+  Platelets: string
+  Prothrombin: string
+  INR: string
+  Cholesterol: string
+  Triglycerides: string
+  Copper: string
+  Hepatomegaly: string
+  Spiders: string
+  Edema: string
+  Ascites: string
 }
 
 interface Patient {
@@ -69,9 +104,15 @@ interface PatientContextType {
 interface AnalysisContextType {
   result: AnalysisResult | null
   input: AnalysisInput | null
+  cancerInput: CancerInput | null
+  fattyLiverInput: FattyLiverInput | null
+  hepatitisInput: HepatitisInput | null
   analysisOrder: string[]
   setResult: React.Dispatch<React.SetStateAction<AnalysisResult | null>>
   setInput: React.Dispatch<React.SetStateAction<AnalysisInput | null>>
+  setCancerInput: React.Dispatch<React.SetStateAction<CancerInput | null>>
+  setFattyLiverInput: React.Dispatch<React.SetStateAction<FattyLiverInput | null>>
+  setHepatitisInput: React.Dispatch<React.SetStateAction<HepatitisInput | null>>
   setAnalysisOrder: React.Dispatch<React.SetStateAction<string[]>>
   reset: () => void
   resetAll: () => void
@@ -150,23 +191,147 @@ export function usePatients() {
 export function AnalysisProvider({ children }: { children: ReactNode }) {
   const [result, setResult] = useState<AnalysisResult | null>(null)
   const [input, setInput] = useState<AnalysisInput | null>(null)
+  const [cancerInput, setCancerInput] = useState<CancerInput | null>(null)
+  const [fattyLiverInput, setFattyLiverInput] = useState<FattyLiverInput | null>(null)
+  const [hepatitisInput, setHepatitisInput] = useState<HepatitisInput | null>(null)
   const [analysisOrder, setAnalysisOrder] = useState<string[]>([])
+
+  // Load result from sessionStorage on mount
+  useEffect(() => {
+    const saved = sessionStorage.getItem("current_analysis_result")
+    if (saved) {
+      try {
+        setResult(JSON.parse(saved))
+      } catch (e) {
+        console.error("Failed to parse saved analysis result", e)
+      }
+    }
+  }, [])
+
+  // Save result to sessionStorage whenever it changes
+  useEffect(() => {
+    if (result) {
+      sessionStorage.setItem("current_analysis_result", JSON.stringify(result))
+    } else {
+      sessionStorage.removeItem("current_analysis_result")
+    }
+  }, [result])
+
+  // Load input from sessionStorage on mount
+  useEffect(() => {
+    const saved = sessionStorage.getItem("inputs_general")
+    if (saved) {
+      try {
+        setInput(JSON.parse(saved))
+      } catch (e) {
+        console.error("Failed to parse saved analysis input", e)
+      }
+    }
+  }, [])
+
+  // Save input to sessionStorage whenever it changes
+  useEffect(() => {
+    if (input) {
+      sessionStorage.setItem("inputs_general", JSON.stringify(input))
+    } else {
+      sessionStorage.removeItem("inputs_general")
+    }
+  }, [input])
+
+  // Load cancerInput from sessionStorage on mount
+  useEffect(() => {
+    const saved = sessionStorage.getItem("inputs_cancer")
+    if (saved) {
+      try {
+        setCancerInput(JSON.parse(saved))
+      } catch (e) {
+        console.error("Failed to parse saved cancer input", e)
+      }
+    }
+  }, [])
+
+  // Save cancerInput to sessionStorage whenever it changes
+  useEffect(() => {
+    if (cancerInput) {
+      sessionStorage.setItem("inputs_cancer", JSON.stringify(cancerInput))
+    } else {
+      sessionStorage.removeItem("inputs_cancer")
+    }
+  }, [cancerInput])
+
+  // Load fattyLiverInput from sessionStorage on mount
+  useEffect(() => {
+    const saved = sessionStorage.getItem("inputs_fatty")
+    if (saved) {
+      try {
+        setFattyLiverInput(JSON.parse(saved))
+      } catch (e) {
+        console.error("Failed to parse saved fatty liver input", e)
+      }
+    }
+  }, [])
+
+  // Save fattyLiverInput to sessionStorage whenever it changes
+  useEffect(() => {
+    if (fattyLiverInput) {
+      sessionStorage.setItem("inputs_fatty", JSON.stringify(fattyLiverInput))
+    } else {
+      sessionStorage.removeItem("inputs_fatty")
+    }
+  }, [fattyLiverInput])
+
+  // Load hepatitisInput from sessionStorage on mount
+  useEffect(() => {
+    const saved = sessionStorage.getItem("inputs_hepatitis")
+    if (saved) {
+      try {
+        setHepatitisInput(JSON.parse(saved))
+      } catch (e) {
+        console.error("Failed to parse saved hepatitis input", e)
+      }
+    }
+  }, [])
+
+  // Save hepatitisInput to sessionStorage whenever it changes
+  useEffect(() => {
+    if (hepatitisInput) {
+      sessionStorage.setItem("inputs_hepatitis", JSON.stringify(hepatitisInput))
+    } else {
+      sessionStorage.removeItem("inputs_hepatitis")
+    }
+  }, [hepatitisInput])
 
   const reset = () => {
     setResult(null)
     setInput(null)
+    setCancerInput(null)
+    setFattyLiverInput(null)
+    setHepatitisInput(null)
     setAnalysisOrder([])
+    sessionStorage.removeItem("current_analysis_result")
+    sessionStorage.removeItem("inputs_general")
+    sessionStorage.removeItem("inputs_cancer")
+    sessionStorage.removeItem("inputs_fatty")
+    sessionStorage.removeItem("inputs_hepatitis")
   }
 
   const resetAll = () => {
     setResult(null)
     setInput(null)
+    setCancerInput(null)
+    setFattyLiverInput(null)
+    setHepatitisInput(null)
     setAnalysisOrder([])
+    sessionStorage.removeItem("current_analysis_result")
+    sessionStorage.removeItem("inputs_general")
+    sessionStorage.removeItem("inputs_cancer")
+    sessionStorage.removeItem("inputs_fatty")
+    sessionStorage.removeItem("inputs_hepatitis")
     // Additional reset logic can be added here if needed
   }
 
   return (
-    <AnalysisContext.Provider value={{ result, input, analysisOrder, setResult, setInput, setAnalysisOrder, reset, resetAll }}>
+    <AnalysisContext.Provider value={{ result, input, cancerInput, fattyLiverInput, hepatitisInput, analysisOrder, setResult, setInput, setCancerInput, setFattyLiverInput, setHepatitisInput, setAnalysisOrder, reset, resetAll }}>
       {children}
     </AnalysisContext.Provider>
   )

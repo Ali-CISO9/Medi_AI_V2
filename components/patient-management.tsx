@@ -125,18 +125,20 @@ export function PatientManagement() {
     setIsDialogOpen(true)
   }
 
-  const handleArchive = async (patientId: string) => {
+  const handleArchive = async (patient: Patient) => {
     if (!confirm('Are you sure you want to archive this patient? The patient will be moved to Medical Records and can be restored later.')) {
       return
     }
 
+    console.log("Archiving Patient ID:", patient.id)
+
     try {
-      const response = await fetch(`/api/patients/${patientId}`, {
-        method: 'DELETE' // This now archives instead of deletes
+      const response = await fetch(`/api/patients/${patient.id}/archive`, {
+        method: 'PUT'
       })
 
       if (response.ok) {
-        setPatients(patients.filter(p => p.patient_id !== patientId))
+        setPatients(patients.filter(p => p.id !== patient.id))
         toast.success('Patient archived successfully')
       } else {
         toast.error('Failed to archive patient')
@@ -257,7 +259,7 @@ export function PatientManagement() {
                 <Button variant="outline" size="sm" onClick={() => handleEdit(patient)} className="rounded-xl gradient-primary hover-lift">
                   <Edit className="h-4 w-4" />
                 </Button>
-                <Button variant="outline" size="sm" onClick={() => handleArchive(patient.patient_id)} className="rounded-xl hover:bg-orange-500/10 hover:border-orange-500/50">
+                <Button variant="outline" size="sm" onClick={() => handleArchive(patient)} className="rounded-xl hover:bg-orange-500/10 hover:border-orange-500/50">
                   <Trash2 className="h-4 w-4" />
                 </Button>
               </div>

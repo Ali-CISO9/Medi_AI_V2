@@ -39,7 +39,6 @@ export function AiAnalysisResult() {
     profilePicture: null as File | null,
     profilePictureUrl: '',
     doctorName: '',
-    department: '',
     analysisDate: new Date().toISOString().split('T')[0],
     analysisTime: new Date().toTimeString().split(' ')[0].substring(0, 5)
   })
@@ -57,7 +56,6 @@ export function AiAnalysisResult() {
         profilePicture: null,
         profilePictureUrl: '',
         doctorName: '',
-        department: '',
         analysisDate: new Date().toISOString().split('T')[0],
         analysisTime: new Date().toTimeString().split(' ')[0].substring(0, 5)
       })
@@ -170,7 +168,7 @@ export function AiAnalysisResult() {
         }
       }
 
-      // First, create or update patient
+      // First, create or get patient
       const patientData = {
         name: patientInfo.name,
         birth_date: patientInfo.birthDate,
@@ -178,41 +176,65 @@ export function AiAnalysisResult() {
         email: patientInfo.email,
         phone: patientInfo.phone,
         profile_picture: profilePictureUrl,
-        department: patientInfo.department,
         doctor_name: patientInfo.doctorName,
       }
-
-      // Create patient if doesn't exist
-      const patientResponse = await fetch('/api/patients', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(patientData),
-      })
-
-      if (!patientResponse.ok) {
-        const errorData = await patientResponse.json()
-        throw new Error(errorData.error || 'Failed to save patient information')
+      let patientId;
+      try {
+        const patientResponse = await fetch('/api/patients', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(patientData),
+        })
+        if (!patientResponse.ok) {
+          const errorData = await patientResponse.json()
+          throw new Error(errorData.error || 'Failed to save patient information')
+        }
+        const patientResult = await patientResponse.json()
+        patientId = patientResult.patient.id
+      } catch (error) {
+        if (error instanceof Error && error.message.includes('ID already exists')) {
+          // Fetch existing patient
+          const getResponse = await fetch(`/api/patients?patient_id=${patientInfo.patientId}`)
+          if (!getResponse.ok) {
+            throw new Error('Failed to fetch existing patient')
+          }
+          const getData = await getResponse.json()
+          if (getData.patients && getData.patients.length > 0) {
+            patientId = getData.patients[0].id
+          } else {
+            throw error
+          }
+        } else {
+          throw error
+        }
       }
 
-      const patientResult = await patientResponse.json()
-      const patientId = patientResult.patient.id
-
-      // Now save the analysis by re-running it with patient association
-      // Include patient_id in the lab values to trigger saving in backend
-      const analysisData = {
-        ...input,
-        patient_id: patientId,
+      // Construct diagnosis, confidence, advice for multi-model sick cases
+      let diagnosis = result.diagnosis;
+      let confidence = result.confidence;
+      let advice = result.advice;
+      if (isMultiModelResult && (result as any).gate_prediction === 0) {
+        diagnosis = diagnosis || "Complex Liver Disease Analysis";
+        confidence = confidence || 85;
+        advice = advice || "Multiple liver conditions detected. See detailed results for specific recommendations.";
       }
 
-      const analysisResponse = await fetch('/api/analyze', {
+      // Now save the report directly
+      const reportResponse = await fetch('/api/reports', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(analysisData),
+        body: JSON.stringify({
+          patient_id: patientId,
+          diagnosis: diagnosis,
+          confidence: confidence,
+          advice: advice,
+          risk_level: (result as any).risk_level || 'medium',
+          detailed_results: result.results,
+        }),
       })
-
-      if (!analysisResponse.ok) {
-        const errorData = await analysisResponse.json()
-        throw new Error(errorData.error || 'Failed to save analysis')
+      if (!reportResponse.ok) {
+        const errorData = await reportResponse.json()
+        throw new Error(errorData.error || 'Failed to save report')
       }
 
       toast.success("Patient Report Saved", {
@@ -231,7 +253,6 @@ export function AiAnalysisResult() {
         profilePicture: null,
         profilePictureUrl: '',
         doctorName: '',
-        department: '',
         analysisDate: new Date().toISOString().split('T')[0],
         analysisTime: new Date().toTimeString().split(' ')[0].substring(0, 5)
       })
@@ -624,22 +645,6 @@ export function AiAnalysisResult() {
                       onChange={(e) => setPatientInfo({ ...patientInfo, doctorName: e.target.value })}
                       placeholder="Attending physician"
                     />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="department">Department</Label>
-                    <Select value={patientInfo.department} onValueChange={(value) => setPatientInfo({ ...patientInfo, department: value })}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select department" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="hepatology">Hepatology</SelectItem>
-                        <SelectItem value="gastroenterology">Gastroenterology</SelectItem>
-                        <SelectItem value="radiology">Radiology</SelectItem>
-                        <SelectItem value="pathology">Pathology</SelectItem>
-                        <SelectItem value="transplant-surgery">Transplant Surgery</SelectItem>
-                      </SelectContent>
-                    </Select>
                   </div>
 
                   <div className="space-y-2">

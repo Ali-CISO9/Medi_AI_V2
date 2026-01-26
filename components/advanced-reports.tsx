@@ -80,6 +80,7 @@ interface PatientAnalysis {
   profile_picture?: string
   doctor_name?: string
   department?: string
+  detailed_results?: string
 }
 
 export function AdvancedReports({ className }: AdvancedReportsProps) {
@@ -226,7 +227,6 @@ export function AdvancedReports({ className }: AdvancedReportsProps) {
      alerts: string[]
      profilePicture?: string
      doctor_name?: string
-     department?: string
      notes?: string
    }>>([])
    const [casesFilter, setCasesFilter] = useState('all')
@@ -251,7 +251,6 @@ export function AdvancedReports({ className }: AdvancedReportsProps) {
      progress: 0,
      status: 'active' as 'active' | 'critical' | 'recovery' | 'pending_review' | 'finished',
      doctor: '',
-     department: '',
      notes: ''
    })
 
@@ -298,6 +297,9 @@ export function AdvancedReports({ className }: AdvancedReportsProps) {
      advice: ''
    })
 
+   // Analysis detail modal state
+   const [selectedDetail, setSelectedDetail] = useState<{ type: 'cancer' | 'hepatitis' | 'fatty_liver' | 'general', data: any } | null>(null)
+
   // Function to expand medical abbreviations
   const expandDiagnosis = (diagnosis: string) => {
     if (diagnosis.toUpperCase() === 'NAFLD') {
@@ -305,6 +307,73 @@ export function AdvancedReports({ className }: AdvancedReportsProps) {
     }
     return diagnosis
   }
+
+  const renderDiagnosticBadges = (analysis: PatientAnalysis) => {
+    if (!analysis.detailed_results || Object.keys(JSON.parse(analysis.detailed_results || '{}')).length === 0) {
+      return (
+        <div>
+          <div className="flex items-center gap-2 mb-2">
+            {analysis.confidence >= 80 ? (
+              <CheckCircle2 className="h-4 w-4 text-green-600" />
+            ) : analysis.confidence >= 60 ? (
+              <AlertCircle className="h-4 w-4 text-yellow-600" />
+            ) : (
+              <AlertCircle className="h-4 w-4 text-red-600" />
+            )}
+            <Badge variant="outline" className={
+              analysis.confidence >= 80 ? "bg-green-100 text-green-800 border-green-200 text-xs" :
+              analysis.confidence >= 60 ? "bg-yellow-100 text-yellow-800 border-yellow-200 text-xs" :
+              "bg-red-100 text-red-800 border-red-200 text-xs"
+            }>
+              {analysis.confidence}% confidence
+            </Badge>
+          </div>
+          <p className="text-xs font-medium text-foreground mb-1">Diagnosis: {expandDiagnosis(analysis.diagnosis)}</p>
+          <p className="text-xs text-muted-foreground mb-2">Advice: {analysis.advice}</p>
+          <p className="text-xs text-muted-foreground">
+            Last Updated: {analysis.updated_at ? new Date(analysis.updated_at).toLocaleDateString() : 'N/A'} at{' '}
+            {analysis.updated_at ? new Date(new Date(analysis.updated_at).getTime() + (3 * 60 * 60 * 1000)).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'N/A'}
+          </p>
+        </div>
+      );
+    }
+    // Render badges for sick cases
+    const details = JSON.parse(analysis.detailed_results);
+    return (
+      <div>
+        <div className="flex flex-wrap gap-1 mb-2">
+          {/* General badge for overall result */}
+          <Badge
+            variant="outline"
+            className="bg-yellow-100 text-yellow-800 border-yellow-200 text-xs cursor-pointer hover:opacity-80"
+            onClick={() => setSelectedDetail({ type: 'general', data: { diagnosis: analysis.diagnosis, confidence: analysis.confidence, advice: analysis.advice } })}
+          >
+            General
+          </Badge>
+          {Object.keys(details).map(key => (
+            <Badge
+              key={key}
+              variant="outline"
+              className={
+                key === 'cancer' ? "bg-red-100 text-red-800 border-red-200 text-xs cursor-pointer hover:opacity-80" :
+                key === 'hepatitis' ? "bg-blue-100 text-blue-800 border-blue-200 text-xs cursor-pointer hover:opacity-80" :
+                key === 'fatty_liver' ? "bg-green-100 text-green-800 border-green-200 text-xs cursor-pointer hover:opacity-80" :
+                "bg-gray-100 text-gray-800 border-gray-200 text-xs cursor-pointer hover:opacity-80"
+              }
+              onClick={() => setSelectedDetail({ type: key as 'cancer' | 'hepatitis' | 'fatty_liver', data: details[key] })}
+            >
+              {key.charAt(0).toUpperCase() + key.slice(1)}
+            </Badge>
+          ))}
+        </div>
+        <p className="text-xs text-muted-foreground">
+          Last Updated: {analysis.updated_at ? new Date(analysis.updated_at).toLocaleDateString() : 'N/A'} at{' '}
+          {analysis.updated_at ? new Date(new Date(analysis.updated_at).getTime() + (3 * 60 * 60 * 1000)).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'N/A'}
+        </p>
+      </div>
+    );
+  };
+
   const reportRef = useRef<HTMLDivElement>(null)
 
   // Fetch patient analyses from backend
@@ -518,7 +587,6 @@ export function AdvancedReports({ className }: AdvancedReportsProps) {
           assignedDoctor: patient?.doctor_name || 'Dr. Assigned',
           alerts: alerts,
           profilePicture: patient?.profile_picture,
-          department: patient?.department || 'Unknown Department',
           notes: '' // Initialize with empty notes
         }
       })
@@ -801,7 +869,6 @@ export function AdvancedReports({ className }: AdvancedReportsProps) {
       progress: case_.treatmentProgress,
       status: case_.status,
       doctor: case_.assignedDoctor,
-      department: case_.department || '',
       notes: ''
     })
     setIsUpdateProgressDialogOpen(true)
@@ -832,34 +899,14 @@ export function AdvancedReports({ className }: AdvancedReportsProps) {
             treatmentProgress: progressUpdate.progress,
             status: newStatus,
             assignedDoctor: progressUpdate.doctor,
-            department: progressUpdate.department,
             notes: progressUpdate.notes, // Will save empty string or the notes text
             lastUpdate: new Date()
           }
         : case_
     }))
 
-    // Update patient department if changed
-    if (progressUpdate.department !== caseToUpdate.department) {
-      try {
-        const patientResponse = await fetch(`/api/patients/${caseToUpdate.patientId}`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ department: progressUpdate.department }),
-        });
-        if (patientResponse.ok) {
-          // Refresh patients data to get updated patient data
-          await refreshPatients()
-        } else {
-          console.error('Failed to update patient department');
-        }
-      } catch (error) {
-        console.error('Error updating patient department:', error);
-      }
-    }
-
     setIsUpdateProgressDialogOpen(false)
-    setProgressUpdate({ caseId: '', progress: 0, status: 'active', doctor: '', department: '', notes: '' })
+    setProgressUpdate({ caseId: '', progress: 0, status: 'active', doctor: '', notes: '' })
     toast.success('Case updated successfully')
   }
 
@@ -1047,7 +1094,7 @@ export function AdvancedReports({ className }: AdvancedReportsProps) {
       }
 
       // Update patient information first - use the patient ID from the analysis
-      const currentPatientId = editingAnalysis.patient_id_display
+      const currentPatientId = editingAnalysis.patient_id
       const patientData = {
         name: editForm.name,
         patient_id: editForm.patientId,
@@ -1059,7 +1106,7 @@ export function AdvancedReports({ className }: AdvancedReportsProps) {
 
       console.log('Updating patient with data:', patientData);
 
-      // Use PUT to update the specific patient by their current patient_id
+      // Use PUT to update the specific patient by their database ID
       const patientResponse = await fetch(`/api/patients/${currentPatientId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
@@ -1074,71 +1121,48 @@ export function AdvancedReports({ className }: AdvancedReportsProps) {
 
       const patientResult = await patientResponse.json()
       console.log('Patient update result:', patientResult);
-      const newPatientId = patientResult.patient.id
 
-      // Update analysis information, including the patient_id if it changed
-      const analysisData = {
-        diagnosis: editForm.diagnosis,
-        confidence: editForm.confidence,
-        advice: editForm.advice,
-        patient_id: newPatientId  // Update the patient association (database ID)
-      }
+      // Refresh the analyses and patients lists
+      await refreshAllData()
 
-      console.log('Updating analysis with data:', analysisData);
+      // Update any appointments that reference this patient (by old patient ID) to use the new patient ID
+      const oldPatientIdDisplay = editingAnalysis.patient_id_display
+      const newPatientId = patientResult.patient.patient_id
+      const newPatientName = patientResult.patient.name
 
-      const analysisResponse = await fetch(`/api/patient-analyses/${editingAnalysis.id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(analysisData)
-      })
+      setUpcomingAppointments(prev => prev.map(appointment =>
+        appointment.patientId === oldPatientIdDisplay
+          ? { ...appointment, patientId: newPatientId, patientName: newPatientName }
+          : appointment
+      ))
 
-      if (analysisResponse.ok) {
-        // Refresh the analyses and patients lists
-        await refreshAllData()
+      // Update localStorage for appointments
+      const currentAppointments = JSON.parse(localStorage.getItem('upcomingAppointments') || '[]')
+      const updatedAppointments = currentAppointments.map((appointment: any) =>
+        appointment.patientId === oldPatientIdDisplay
+          ? { ...appointment, patientId: newPatientId, patientName: newPatientName }
+          : appointment
+      )
+      localStorage.setItem('upcomingAppointments', JSON.stringify(updatedAppointments))
 
-        // Update any appointments that reference this patient (by old patient ID) to use the new patient ID
-        const oldPatientIdDisplay = editingAnalysis.patient_id_display
-        const newPatientId = patientResult.patient.patient_id
-        const newPatientName = patientResult.patient.name
+      // Update active cases that reference this patient (by patient_id_display)
+      setActiveCases(prev => prev.map(case_ =>
+        case_.patientId === oldPatientIdDisplay
+          ? { ...case_, patientId: newPatientId, patientName: newPatientName }
+          : case_
+      ))
 
-        setUpcomingAppointments(prev => prev.map(appointment =>
-          appointment.patientId === oldPatientIdDisplay
-            ? { ...appointment, patientId: newPatientId, patientName: newPatientName }
-            : appointment
-        ))
+      // Update localStorage for active cases
+      const updatedCases = activeCases.map(case_ =>
+        case_.patientId === oldPatientIdDisplay
+          ? { ...case_, patientId: newPatientId, patientName: newPatientName }
+          : case_
+      )
+      localStorage.setItem('activeCases', JSON.stringify(updatedCases))
 
-        // Update localStorage for appointments
-        const currentAppointments = JSON.parse(localStorage.getItem('upcomingAppointments') || '[]')
-        const updatedAppointments = currentAppointments.map((appointment: any) =>
-          appointment.patientId === oldPatientIdDisplay
-            ? { ...appointment, patientId: newPatientId, patientName: newPatientName }
-            : appointment
-        )
-        localStorage.setItem('upcomingAppointments', JSON.stringify(updatedAppointments))
-
-        // Update active cases that reference this patient (by patient_id_display)
-        setActiveCases(prev => prev.map(case_ =>
-          case_.patientId === oldPatientIdDisplay
-            ? { ...case_, patientId: newPatientId, patientName: newPatientName }
-            : case_
-        ))
-
-        // Update localStorage for active cases
-        const updatedCases = activeCases.map(case_ =>
-          case_.patientId === oldPatientIdDisplay
-            ? { ...case_, patientId: newPatientId, patientName: newPatientName }
-            : case_
-        )
-        localStorage.setItem('activeCases', JSON.stringify(updatedCases))
-
-        setEditingAnalysis(null)
-        setIsEditDialogOpen(false)
-        toast.success('Analysis and patient information updated successfully')
-      } else {
-        const errorData = await analysisResponse.json()
-        console.error('Analysis update failed:', errorData);
-        toast.error('Failed to update analysis')
-      }
+      setEditingAnalysis(null)
+      setIsEditDialogOpen(false)
+      toast.success('Patient information updated successfully')
     } catch (error) {
       console.error('Update error:', error)
       toast.error(error instanceof Error ? error.message : 'Failed to update analysis')
@@ -1159,8 +1183,8 @@ export function AdvancedReports({ className }: AdvancedReportsProps) {
       }
 
       // Archive the patient (this will also archive all their analyses)
-      const patientResponse = await fetch(`/api/patients/${analysis.patient_id_display}`, {
-        method: 'DELETE' // This now archives instead of deletes
+      const patientResponse = await fetch(`/api/patients/${analysis.patient_id}/archive`, {
+        method: 'PUT'
       })
 
       if (patientResponse.ok) {
@@ -1810,31 +1834,8 @@ export function AdvancedReports({ className }: AdvancedReportsProps) {
 
 
                         {/* Test Results */}
-                        <div className="col-span-4 flex flex-col justify-center space-y-2">
-                          <div className="flex items-center gap-2">
-                            {analysis.confidence >= 80 ? (
-                              <CheckCircle2 className="h-4 w-4 text-green-600" />
-                            ) : analysis.confidence >= 60 ? (
-                              <AlertCircle className="h-4 w-4 text-yellow-600" />
-                            ) : (
-                              <AlertCircle className="h-4 w-4 text-red-600" />
-                            )}
-                            <Badge variant="outline" className={
-                              analysis.confidence >= 80 ? "bg-green-100 text-green-800 border-green-200 text-xs" :
-                              analysis.confidence >= 60 ? "bg-yellow-100 text-yellow-800 border-yellow-200 text-xs" :
-                              "bg-red-100 text-red-800 border-red-200 text-xs"
-                            }>
-                              {analysis.confidence}% confidence
-                            </Badge>
-                          </div>
-                          <div>
-                            <p className="text-xs font-medium text-foreground">Diagnosis: {expandDiagnosis(analysis.diagnosis)}</p>
-                            <p className="text-xs text-muted-foreground mt-1">Advice: {analysis.advice}</p>
-                          </div>
-                          <p className="text-xs text-muted-foreground">
-                            Last Updated: {analysis.updated_at ? new Date(analysis.updated_at).toLocaleDateString() : 'N/A'} at{' '}
-                            {analysis.updated_at ? new Date(new Date(analysis.updated_at).getTime() + (3 * 60 * 60 * 1000)).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'N/A'}
-                          </p>
+                        <div className="col-span-4 flex flex-col justify-center">
+                          {renderDiagnosticBadges(analysis)}
                         </div>
 
                         {/* Actions */}
@@ -1909,28 +1910,7 @@ export function AdvancedReports({ className }: AdvancedReportsProps) {
 
                           {/* Test Results */}
                           <div className="mb-3">
-                            <div className="flex items-center gap-2 mb-2">
-                              {analysis.confidence >= 80 ? (
-                                <CheckCircle2 className="h-4 w-4 text-green-600" />
-                              ) : analysis.confidence >= 60 ? (
-                                <AlertCircle className="h-4 w-4 text-yellow-600" />
-                              ) : (
-                                <AlertCircle className="h-4 w-4 text-red-600" />
-                              )}
-                              <Badge variant="outline" className={
-                                analysis.confidence >= 80 ? "bg-green-100 text-green-800 border-green-200 text-xs" :
-                                analysis.confidence >= 60 ? "bg-yellow-100 text-yellow-800 border-yellow-200 text-xs" :
-                                "bg-red-100 text-red-800 border-red-200 text-xs"
-                              }>
-                                {analysis.confidence}% confidence
-                              </Badge>
-                            </div>
-                            <p className="text-xs font-medium text-foreground mb-1">Diagnosis: {expandDiagnosis(analysis.diagnosis)}</p>
-                            <p className="text-xs text-muted-foreground mb-2">Advice: {analysis.advice}</p>
-                            <p className="text-xs text-muted-foreground">
-                              Last Updated: {analysis.updated_at ? new Date(analysis.updated_at).toLocaleDateString() : 'N/A'} at{' '}
-                              {analysis.updated_at ? new Date(new Date(analysis.updated_at).getTime() + (3 * 60 * 60 * 1000)).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'N/A'}
-                            </p>
+                            {renderDiagnosticBadges(analysis)}
                           </div>
 
                           {/* Actions */}
@@ -2610,9 +2590,9 @@ export function AdvancedReports({ className }: AdvancedReportsProps) {
                             <div className="flex items-start gap-2">
                               <Users className="h-4 w-4 text-gray-400 mt-0.5 flex-shrink-0" />
                               <div className="min-w-0">
-                                <div className="text-xs font-medium text-gray-700">Doctor/Department</div>
+                                <div className="text-xs font-medium text-gray-700">Doctor</div>
                                 <div className="text-sm text-gray-900 truncate">
-                                  {case_.assignedDoctor} {case_.department ? ` / ${case_.department}` : ''}
+                                  {case_.assignedDoctor}
                                 </div>
                               </div>
                             </div>
@@ -2915,16 +2895,16 @@ export function AdvancedReports({ className }: AdvancedReportsProps) {
          </TabsContent>
       </Tabs>
 
-      {/* Edit Analysis Dialog */}
+      {/* Edit Patient Dialog */}
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Edit className="h-5 w-5" />
-              Edit Analysis & Patient Information
+              Edit Patient Information
             </DialogTitle>
             <DialogDescription>
-              Update patient information and analysis details
+              Update patient information
             </DialogDescription>
           </DialogHeader>
 
@@ -3020,65 +3000,6 @@ export function AdvancedReports({ className }: AdvancedReportsProps) {
               </div>
             </div>
 
-            {/* Analysis Information Section */}
-            <div className="space-y-4">
-              <h3 className="text-lg font-semibold text-foreground border-b pb-2">Analysis Information</h3>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="edit-analysis-date">Analysis Date</Label>
-                  <Input
-                    id="edit-analysis-date"
-                    type="date"
-                    value={editForm.analysisDate}
-                    onChange={(e) => setEditForm({...editForm, analysisDate: e.target.value})}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="edit-analysis-time">Analysis Time</Label>
-                  <Input
-                    id="edit-analysis-time"
-                    type="time"
-                    value={editForm.analysisTime}
-                    onChange={(e) => setEditForm({...editForm, analysisTime: e.target.value})}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="edit-confidence">Confidence (%)</Label>
-                  <Input
-                    id="edit-confidence"
-                    type="number"
-                    min="0"
-                    max="100"
-                    value={editForm.confidence}
-                    onChange={(e) => setEditForm({...editForm, confidence: parseInt(e.target.value) || 0})}
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="edit-diagnosis">Diagnosis</Label>
-                <Input
-                  id="edit-diagnosis"
-                  value={editForm.diagnosis}
-                  onChange={(e) => setEditForm({...editForm, diagnosis: e.target.value})}
-                  placeholder="Medical diagnosis"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="edit-advice">Medical Advice</Label>
-                <Textarea
-                  id="edit-advice"
-                  value={editForm.advice}
-                  onChange={(e) => setEditForm({...editForm, advice: e.target.value})}
-                  placeholder="Medical advice and recommendations..."
-                  rows={3}
-                />
-              </div>
-
-            </div>
           </div>
 
           <Separator className="my-4" />
@@ -3094,7 +3015,7 @@ export function AdvancedReports({ className }: AdvancedReportsProps) {
               onClick={handleUpdateAnalysis}
               className="gradient-primary"
             >
-              Update Analysis
+              Update Patient Info
             </Button>
           </div>
         </DialogContent>
@@ -4045,7 +3966,6 @@ export function AdvancedReports({ className }: AdvancedReportsProps) {
                       {patient.email && <div><strong>Email:</strong> {patient.email}</div>}
                       {patient.phone && <div><strong>Phone:</strong> {patient.phone}</div>}
                       {patient.doctor_name && <div><strong>Doctor:</strong> {patient.doctor_name}</div>}
-                      {patient.department && <div><strong>Department:</strong> {patient.department}</div>}
                     </div>
                   ) : null
                 })()}
@@ -4372,25 +4292,6 @@ export function AdvancedReports({ className }: AdvancedReportsProps) {
                   onChange={(e) => setProgressUpdate({...progressUpdate, doctor: e.target.value})}
                 />
               </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="department-select">Department</Label>
-                <Select
-                  value={progressUpdate.department}
-                  onValueChange={(value) => setProgressUpdate({...progressUpdate, department: value})}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select department" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="hepatology">Hepatology</SelectItem>
-                    <SelectItem value="gastroenterology">Gastroenterology</SelectItem>
-                    <SelectItem value="radiology">Radiology</SelectItem>
-                    <SelectItem value="pathology">Pathology</SelectItem>
-                    <SelectItem value="transplant-surgery">Transplant Surgery</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
             </div>
 
             <div className="space-y-2">
@@ -4450,13 +4351,192 @@ export function AdvancedReports({ className }: AdvancedReportsProps) {
               variant="outline"
               onClick={() => {
                 setIsUpdateProgressDialogOpen(false)
-                setProgressUpdate({ caseId: '', progress: 0, status: 'active' as 'active' | 'critical' | 'recovery' | 'pending_review' | 'finished', doctor: '', department: '', notes: '' })
+                setProgressUpdate({ caseId: '', progress: 0, status: 'active' as 'active' | 'critical' | 'recovery' | 'pending_review' | 'finished', doctor: '', notes: '' })
               }}
             >
               Cancel
             </Button>
             <Button onClick={saveProgressUpdate} className="gradient-primary">
               Update Case
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Analysis Detail Dialog */}
+      <Dialog open={!!selectedDetail} onOpenChange={() => setSelectedDetail(null)}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Stethoscope className="h-5 w-5" />
+              {selectedDetail?.type === 'general' && 'General Test Result'}
+              {selectedDetail?.type === 'cancer' && 'Cancer Risk Assessment'}
+              {selectedDetail?.type === 'hepatitis' && 'Hepatitis Analysis'}
+              {selectedDetail?.type === 'fatty_liver' && 'Fatty Liver Analysis'}
+            </DialogTitle>
+            <DialogDescription>
+              Detailed analysis results for {selectedDetail?.type?.replace('_', ' ')}
+            </DialogDescription>
+          </DialogHeader>
+
+          {selectedDetail && (
+            <div className="space-y-4">
+              {selectedDetail.type === 'general' && (
+                <div className="rounded-xl gradient-card p-4 md:p-5">
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="flex h-8 w-8 items-center justify-center rounded-lg gradient-primary animate-glow">
+                      <Activity className="h-4 w-4 text-primary-foreground" />
+                    </div>
+                    <h3 className="text-lg font-semibold gradient-text">General Test Result</h3>
+                  </div>
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="font-medium">Diagnosis:</span>
+                      <span className="px-3 py-1 rounded-full text-sm font-medium bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200">
+                        Potential Risk Detected
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="font-medium">Confidence:</span>
+                      <span className="text-sm">{selectedDetail.data.confidence ?? 0}%</span>
+                    </div>
+                    <div className="pt-2 border-t">
+                      <p className="text-sm text-muted-foreground">General Test indicates potential liver disease risk. Detailed analysis recommended for accurate diagnosis.</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {selectedDetail.type === 'hepatitis' && (
+                <div className="rounded-xl gradient-card p-4 md:p-5">
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="flex h-8 w-8 items-center justify-center rounded-lg gradient-primary animate-glow">
+                      <Activity className="h-4 w-4 text-primary-foreground" />
+                    </div>
+                    <h3 className="text-lg font-semibold gradient-text">Hepatitis Analysis</h3>
+                  </div>
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-background/50">
+                          {selectedDetail.data.confidence >= 80 ? <CheckCircle2 className="h-4 w-4 text-green-600" /> :
+                           selectedDetail.data.confidence >= 60 ? <AlertCircle className="h-4 w-4 text-yellow-600" /> :
+                           <AlertCircle className="h-4 w-4 text-red-600" />}
+                        </div>
+                        <div>
+                          <p className="font-semibold text-sm">Stage {selectedDetail.data.stage ?? 0} ({selectedDetail.data.stage_description || 'Unknown'})</p>
+                          <p className="text-xs text-muted-foreground">Fibrosis Assessment</p>
+                        </div>
+                      </div>
+                      <Badge variant="outline" className={
+                        (selectedDetail.data.stage === 0 || selectedDetail.data.stage === 1) ? "bg-green-100 text-green-800 border-green-200" :
+                        selectedDetail.data.stage === 2 ? "bg-yellow-100 text-yellow-800 border-yellow-200" :
+                        "bg-red-100 text-red-800 border-red-200"
+                      } style={{ fontWeight: 'bold', fontSize: '12px' }}>
+                        Stage {selectedDetail.data.stage ?? 0}
+                      </Badge>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4 text-sm">
+                      <div>
+                        <p className="font-medium">Complications Risk</p>
+                        <p className="text-muted-foreground">{selectedDetail.data.complications_risk ?? 0}%</p>
+                      </div>
+                      <div>
+                        <p className="font-medium">Mortality Risk</p>
+                        <p className="text-muted-foreground">{selectedDetail.data.mortality_risk ?? 0}%</p>
+                      </div>
+                    </div>
+                    <div className="border-t pt-3">
+                      <p className="text-xs font-medium mb-2">Liver Function Scores</p>
+                      <div className="grid grid-cols-2 gap-4 text-xs">
+                        <div>
+                          <p className="font-medium">APRI Score</p>
+                          <p className="text-muted-foreground">{(selectedDetail.data.apri_score ?? 0).toFixed(2)}</p>
+                        </div>
+                        <div>
+                          <p className="font-medium">ALBI Score</p>
+                          <p className="text-muted-foreground">{(selectedDetail.data.albi_score ?? 0).toFixed(2)}</p>
+                        </div>
+                      </div>
+                    </div>
+                    <p className="text-sm text-muted-foreground">{selectedDetail.data.advice || "No advice available"}</p>
+                  </div>
+                </div>
+              )}
+
+              {selectedDetail.type === 'cancer' && (
+                <div className="rounded-xl gradient-card p-4 md:p-5">
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="flex h-8 w-8 items-center justify-center rounded-lg gradient-primary animate-glow">
+                      <Stethoscope className="h-4 w-4 text-primary-foreground" />
+                    </div>
+                    <h3 className="text-lg font-semibold gradient-text">Cancer Risk Assessment</h3>
+                  </div>
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-background/50">
+                          {selectedDetail.data.risk_percentage <= 10 ? <CheckCircle2 className="h-4 w-4 text-green-600" /> :
+                           selectedDetail.data.risk_percentage <= 40 ? <AlertCircle className="h-4 w-4 text-yellow-600" /> :
+                           selectedDetail.data.risk_percentage <= 50 ? <AlertCircle className="h-4 w-4 text-orange-600" /> :
+                           <AlertCircle className="h-4 w-4 text-red-600" />}
+                        </div>
+                        <div>
+                          <p className="font-semibold text-sm">Risk Level: {selectedDetail.data.risk_percentage?.toFixed(1) ?? 0}%</p>
+                          <p className="text-xs text-muted-foreground">5-Tier Assessment</p>
+                        </div>
+                      </div>
+                      <Badge variant="outline" className={
+                        selectedDetail.data.risk_percentage <= 10 ? "bg-green-100 text-green-800 border-green-200" :
+                        selectedDetail.data.risk_percentage <= 40 ? "bg-yellow-100 text-yellow-800 border-yellow-200" :
+                        selectedDetail.data.risk_percentage <= 50 ? "bg-orange-100 text-orange-800 border-orange-200" :
+                        "bg-red-100 text-red-800 border-red-200"
+                      } style={{ fontWeight: 'bold', fontSize: '12px' }}>
+                        {selectedDetail.data.risk_percentage?.toFixed(1) ?? 0}%
+                      </Badge>
+                    </div>
+                    <p className="text-sm text-muted-foreground">{selectedDetail.data.advice || "No advice available"}</p>
+                  </div>
+                </div>
+              )}
+
+              {selectedDetail.type === 'fatty_liver' && (
+                <div className="rounded-xl gradient-card p-4 md:p-5">
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="flex h-8 w-8 items-center justify-center rounded-lg gradient-primary animate-glow">
+                      <TrendingUp className="h-4 w-4 text-primary-foreground" />
+                    </div>
+                    <h3 className="text-lg font-semibold gradient-text">Fatty Liver Analysis</h3>
+                  </div>
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-background/50">
+                          {selectedDetail.data.diagnosis?.toLowerCase().includes('healthy') ? <CheckCircle2 className="h-4 w-4 text-green-600" /> : <AlertCircle className="h-4 w-4 text-red-600" />}
+                        </div>
+                        <div>
+                          <p className="font-semibold text-sm">{selectedDetail.data.diagnosis || 'Unknown'}</p>
+                          <p className="text-xs text-muted-foreground">Injury Confidence: {selectedDetail.data.confidence?.toFixed(1) ?? 0}%</p>
+                        </div>
+                      </div>
+                      <Badge variant="outline" className={
+                        selectedDetail.data.diagnosis?.toLowerCase().includes('healthy') ? "bg-green-100 text-green-800 border-green-200" : "bg-red-100 text-red-800 border-red-200"
+                      } style={{ fontWeight: 'bold', fontSize: '12px' }}>
+                        {selectedDetail.data.confidence?.toFixed(1) ?? 0}%
+                      </Badge>
+                    </div>
+                    <p className="text-sm text-muted-foreground">{selectedDetail.data.advice || "No advice available"}</p>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          <Separator className="my-4" />
+
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" onClick={() => setSelectedDetail(null)}>
+              Close
             </Button>
           </div>
         </DialogContent>
