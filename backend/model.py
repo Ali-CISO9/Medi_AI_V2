@@ -154,7 +154,21 @@ def predict_liver_disease(alt: float, ast: float, bilirubin: float, ggt: float, 
         # 2. APRI Score Calculation
         # ----------------------------------------------------------
         ast_upper_limit = 40  # IU/L
-        apri_score = (ast / ast_upper_limit / (platelets / 100000)) * 100
+
+        # Handle platelets in different formats
+        # Standard unit for platelets in APRI formula is 10^9/L
+
+        # Detect and convert platelets to standard unit (10^9/L)
+        # Scenario 1: Normalized value (e.g., 1.27 instead of 127)
+        if platelets < 10:
+            platelets = platelets * 100  # Convert to standard unit
+        # Scenario 2: Actual count (e.g., 280,000 instead of 280)
+        elif platelets > 1000:
+            platelets = platelets / 1000  # Convert to standard unit
+
+        # APRI Formula: ((AST / Upper Limit) / Platelets) × 100
+        # Platelets should be in 10^9/L (standard unit)
+        apri_score = (ast / ast_upper_limit / platelets) * 100
         print(f"APRI Score: {apri_score:.2f}")
 
         if apri_score < 0.5:

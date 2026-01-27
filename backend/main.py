@@ -157,7 +157,7 @@ async def analyze_patient(user_profile: dict, db: Session = Depends(get_db)):
             elif analysis_type == 'hepatitis':
                 diagnosis = f"Hepatitis Stage {model_results['hepatitis']['stage']}"
                 confidence = int(model_results['hepatitis']['mortality_risk'])
-                advice = model_results['hepatitis']['status_advice']
+                advice = model_results['hepatitis']['advice']
                 risk_level = model_results['hepatitis']['risk_level']
 
             detailed_results = model_results

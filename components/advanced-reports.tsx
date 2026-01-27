@@ -112,6 +112,7 @@ export function AdvancedReports({ className }: AdvancedReportsProps) {
     const [selectedAnalysisForReport, setSelectedAnalysisForReport] = useState<PatientAnalysis | null>(null)
     const [isReportDialogOpen, setIsReportDialogOpen] = useState(false)
     const [isRefreshing, setIsRefreshing] = useState(false)
+    const [patientLabTests, setPatientLabTests] = useState<any[]>([])
 
    // Overview tab state
    const [overviewMetrics, setOverviewMetrics] = useState({
@@ -1065,9 +1066,22 @@ export function AdvancedReports({ className }: AdvancedReportsProps) {
     setIsEditDialogOpen(true)
   }
 
-  const handleViewReport = (analysis: PatientAnalysis) => {
+  const handleViewReport = async (analysis: PatientAnalysis) => {
     setSelectedAnalysisForReport(analysis)
     setIsReportDialogOpen(true)
+    
+    // Fetch lab tests for this patient
+    try {
+      const response = await fetch(`/api/lab-tests?patientId=${analysis.patient_id_display}`)
+      const data = await response.json()
+      console.log('Lab tests response:', data) // Debug: Log the actual response
+      if (data.success && data.labTests) {
+        console.log('Lab tests data:', data.labTests) // Debug: Log the lab tests array
+        setPatientLabTests(data.labTests)
+      }
+    } catch (error) {
+      console.error('Error fetching lab tests:', error)
+    }
   }
 
   const handleUpdateAnalysis = async () => {
@@ -3023,11 +3037,11 @@ export function AdvancedReports({ className }: AdvancedReportsProps) {
 
       {/* Medical Report Dialog */}
       <Dialog open={isReportDialogOpen} onOpenChange={setIsReportDialogOpen}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <FileText className="h-5 w-5" />
-              Comprehensive Medical Report
+              Patient Medical Report
             </DialogTitle>
             <DialogDescription>
               Detailed analysis and interpretation for {selectedAnalysisForReport?.patient_name}
@@ -3035,163 +3049,389 @@ export function AdvancedReports({ className }: AdvancedReportsProps) {
           </DialogHeader>
 
           {selectedAnalysisForReport && (
-            <div id="medical-report" className="space-y-6 p-4 bg-white rounded-lg">
-              {/* Report Header */}
-              <div className="text-center border-b pb-4">
-                <h1 className="text-2xl font-bold text-gray-900">Medical Laboratory Report</h1>
-                <p className="text-gray-600 mt-1">Liver Function Analysis</p>
-                <p className="text-sm text-gray-500 mt-2">Report Date: {new Date().toLocaleDateString()}</p>
-              </div>
+            <div id="medical-report" className="space-y-6">
+              <Tabs defaultValue="overview" className="w-full">
+                <TabsList className="grid w-full grid-cols-3 rounded-xl gradient-bg">
+                  <TabsTrigger value="overview" className="rounded-lg hover-lift data-[state=active]:bg-gradient-to-r data-[state=active]:from-green-500 data-[state=active]:via-emerald-500 data-[state=active]:to-teal-500 data-[state=active]:text-white">Overview</TabsTrigger>
+                  <TabsTrigger value="tests" className="rounded-lg hover-lift data-[state=active]:bg-gradient-to-r data-[state=active]:from-green-500 data-[state=active]:via-emerald-500 data-[state=active]:to-teal-500 data-[state=active]:text-white">Test Results</TabsTrigger>
+                  <TabsTrigger value="recommendations" className="rounded-lg hover-lift data-[state=active]:bg-gradient-to-r data-[state=active]:from-green-500 data-[state=active]:via-emerald-500 data-[state=active]:to-teal-500 data-[state=active]:text-white">Recommendations</TabsTrigger>
+                </TabsList>
 
-              {/* Patient Information */}
-              <div className="bg-gray-50 p-4 rounded-lg">
-                <h2 className="text-lg font-semibold mb-3">Patient Information</h2>
-                <div className="grid grid-cols-2 gap-4 text-sm">
-                  <div><strong>Patient Name:</strong> {selectedAnalysisForReport.patient_name}</div>
-                  <div><strong>Patient ID:</strong> {selectedAnalysisForReport.patient_id_display}</div>
-                  <div><strong>Report ID:</strong> {selectedAnalysisForReport.id}</div>
-                  <div><strong>Analysis Date:</strong> {new Date(selectedAnalysisForReport.created_at).toLocaleDateString()}</div>
-                  <div><strong>Confidence Level:</strong> {selectedAnalysisForReport.confidence}%</div>
-                  {selectedAnalysisForReport.birth_date && (
-                    <div><strong>Birth Date:</strong> {new Date(selectedAnalysisForReport.birth_date).toLocaleDateString()}</div>
+                {/* Overview Tab */}
+                <TabsContent value="overview" className="space-y-6 mt-6">
+                  {/* Patient Information Card */}
+                  <Card className="gradient-card shadow-lg">
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2 gradient-text">
+                        <Users className="h-5 w-5" />
+                        Patient Information
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <div className="flex items-center gap-3">
+                            <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold text-sm overflow-hidden">
+                              {selectedAnalysisForReport.profile_picture ? (
+                                <img
+                                  src={selectedAnalysisForReport.profile_picture}
+                                  alt={`${selectedAnalysisForReport.patient_name} profile`}
+                                  className="w-12 h-12 rounded-full object-cover"
+                                />
+                              ) : (
+                                (selectedAnalysisForReport.patient_name || 'U')[0].toUpperCase()
+                              )}
+                            </div>
+                            <div>
+                              <p className="font-semibold text-foreground">{selectedAnalysisForReport.patient_name}</p>
+                              <p className="text-sm text-muted-foreground">ID: {selectedAnalysisForReport.patient_id_display}</p>
+                            </div>
+                          </div>
+                          {selectedAnalysisForReport.birth_date && (
+                            <div className="text-sm">
+                              <span className="text-muted-foreground">Birth Date:</span>{' '}
+                              <span className="font-medium">{new Date(selectedAnalysisForReport.birth_date).toLocaleDateString()}</span>
+                            </div>
+                          )}
+                          {selectedAnalysisForReport.email && (
+                            <div className="text-sm">
+                              <span className="text-muted-foreground">Email:</span>{' '}
+                              <span className="font-medium">{selectedAnalysisForReport.email}</span>
+                            </div>
+                          )}
+                          {selectedAnalysisForReport.phone && (
+                            <div className="text-sm">
+                              <span className="text-muted-foreground">Phone:</span>{' '}
+                              <span className="font-medium">{selectedAnalysisForReport.phone}</span>
+                            </div>
+                          )}
+                        </div>
+                        <div className="space-y-2">
+                          <div className="text-sm">
+                            <span className="text-muted-foreground">Report ID:</span>{' '}
+                            <span className="font-medium">{selectedAnalysisForReport.id}</span>
+                          </div>
+                          <div className="text-sm">
+                            <span className="text-muted-foreground">Analysis Date:</span>{' '}
+                            <span className="font-medium">{new Date(selectedAnalysisForReport.created_at).toLocaleDateString()}</span>
+                          </div>
+                          <div className="text-sm">
+                            <span className="text-muted-foreground">Confidence:</span>{' '}
+                            <Badge variant="outline" className={
+                              selectedAnalysisForReport.confidence >= 80 ? "bg-green-100 text-green-800 border-green-200" :
+                              selectedAnalysisForReport.confidence >= 60 ? "bg-yellow-100 text-yellow-800 border-yellow-200" :
+                              "bg-red-100 text-red-800 border-red-200"
+                            }>
+                              {selectedAnalysisForReport.confidence}%
+                            </Badge>
+                          </div>
+                          {selectedAnalysisForReport.doctor_name && (
+                            <div className="text-sm">
+                              <span className="text-muted-foreground">Doctor:</span>{' '}
+                              <span className="font-medium">{selectedAnalysisForReport.doctor_name}</span>
+                            </div>
+                          )}
+                          {selectedAnalysisForReport.department && (
+                            <div className="text-sm">
+                              <span className="text-muted-foreground">Department:</span>{' '}
+                              <span className="font-medium">{selectedAnalysisForReport.department}</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  {/* AI Diagnosis Card */}
+                  <Card className="gradient-card shadow-lg">
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2 gradient-text">
+                        <Activity className="h-5 w-5" />
+                        Patient Parameters
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-4">
+                        {(() => {
+                          // Calculate age from birth date
+                          const age = selectedAnalysisForReport.birth_date 
+                            ? new Date().getFullYear() - new Date(selectedAnalysisForReport.birth_date).getFullYear()
+                            : 'N/A'
+                          
+                          // Gender from patient info (hardcoded as Male based on existing code)
+                          const gender = 'Male'
+                          
+                          // Extract lab test values from patientLabTests
+                          const getLabValue = (testName: string) => {
+                            const test = patientLabTests.find((t: any) => t.testName === testName)
+                            return test ? `${test.value} ${test.unit}` : 'N/A'
+                          }
+                          
+                          const parameters = [
+                            { key: 'Gender', label: 'Gender', value: gender },
+                            { key: 'AST', label: 'AST', value: getLabValue('AST') },
+                            { key: 'ALP', label: 'ALP', value: getLabValue('ALP') },
+                            { key: 'ALT', label: 'ALT', value: getLabValue('ALT') },
+                            { key: 'Albumin', label: 'Albumin', value: getLabValue('Albumin') },
+                            { key: 'Total Bilirubin', label: 'Total Bilirubin', value: getLabValue('Total Bilirubin') },
+                            { key: 'BMI', label: 'BMI', value: getLabValue('BMI') }
+                          ]
+
+                          return (
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                              {parameters.map((param) => (
+                                <div key={param.key} className="p-4 bg-blue-50 rounded-lg border border-blue-200">
+                                  <div className="flex items-center justify-between mb-2">
+                                    <span className="font-semibold text-blue-900">{param.label}</span>
+                                    <Badge variant="outline" className="bg-blue-100 text-blue-800 border-blue-200">
+                                      {param.value}
+                                    </Badge>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          )
+                        })()}
+                      </div>
+                    </CardContent>
+                  </Card>
+                </TabsContent>
+
+                {/* Test Results Tab */}
+                <TabsContent value="tests" className="space-y-6 mt-6">
+                  {selectedAnalysisForReport.detailed_results && Object.keys(JSON.parse(selectedAnalysisForReport.detailed_results || '{}')).length > 0 ? (
+                    <Card className="gradient-card shadow-lg">
+                      <CardHeader>
+                        <CardTitle className="flex items-center gap-2 gradient-text">
+                          <BarChart3 className="h-5 w-5" />
+                          Laboratory Test Results
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="space-y-4">
+                          {(() => {
+                            const detailedResults = JSON.parse(selectedAnalysisForReport.detailed_results || '{}')
+                            
+                            // Helper function to render test result
+                            const renderTestResult = (testName: string, testData: any) => {
+                              if (!testData) return null
+                              
+                              const value = testData.value ?? testData.result ?? testData
+                              const unit = testData.unit ?? ''
+                              const normalRange = testData.normal_range ?? testData.normalRange ?? 'N/A'
+                              const status = testData.status ?? 'normal'
+                              const isNormal = status === 'normal'
+                              
+                              return (
+                                <div key={testName} className={`p-4 rounded-lg border ${isNormal ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'}`}>
+                                  <div className="flex items-center justify-between mb-2">
+                                    <h3 className="font-semibold text-foreground">{testName}</h3>
+                                    <Badge variant="outline" className={
+                                      isNormal ? "bg-green-100 text-green-800 border-green-200" : "bg-red-100 text-red-800 border-red-200"
+                                    }>
+                                      {isNormal ? 'Normal' : 'Abnormal'}
+                                    </Badge>
+                                  </div>
+                                  <div className="grid grid-cols-3 gap-4 text-sm">
+                                    <div>
+                                      <p className="text-muted-foreground">Value</p>
+                                      <p className="font-bold text-lg">{value} {unit}</p>
+                                    </div>
+                                    <div>
+                                      <p className="text-muted-foreground">Normal Range</p>
+                                      <p className="font-medium">{normalRange}</p>
+                                    </div>
+                                    <div>
+                                      <p className="text-muted-foreground">Status</p>
+                                      <Badge variant="outline" className={
+                                        isNormal ? "bg-green-100 text-green-800 border-green-200" : "bg-red-100 text-red-800 border-red-200"
+                                      }>
+                                        {status}
+                                      </Badge>
+                                    </div>
+                                  </div>
+                                  {testData.interpretation && (
+                                    <div className="mt-3 pt-3 border-t">
+                                      <p className="text-sm text-muted-foreground">
+                                        <strong>Interpretation:</strong> {testData.interpretation}
+                                      </p>
+                                    </div>
+                                  )}
+                                </div>
+                              )
+                            }
+                            
+                            // Render individual test results from detailed_results
+                            return (
+                              <>
+                                {Object.entries(detailedResults).map(([key, value]: [string, any]) => {
+                                  // Skip nested objects (cancer, hepatitis, fatty_liver, gate)
+                                  if (typeof value === 'object' && value !== null) return null
+                                  
+                                  // Render individual test values
+                                  return renderTestResult(key, value)
+                                })}
+                                
+                                {/* Render detailed analysis results if available */}
+                                {detailedResults.cancer && (
+                                  <div className="p-4 bg-red-50 rounded-lg border border-red-200">
+                                    <h3 className="font-semibold text-red-900 mb-3">Cancer Risk Assessment</h3>
+                                    <div className="grid grid-cols-2 gap-4 text-sm">
+                                      <div>
+                                        <p className="text-muted-foreground">Risk Level</p>
+                                        <p className="font-bold text-lg">{detailedResults.cancer.risk_level || 'N/A'}</p>
+                                      </div>
+                                      <div>
+                                        <p className="text-muted-foreground">Risk Percentage</p>
+                                        <p className="font-bold text-lg">{detailedResults.cancer.risk_percentage?.toFixed(1) || 'N/A'}%</p>
+                                      </div>
+                                    </div>
+                                    {detailedResults.cancer.advice && (
+                                      <div className="mt-3 pt-3 border-t">
+                                        <p className="text-sm text-muted-foreground">
+                                          <strong>Advice:</strong> {detailedResults.cancer.advice}
+                                        </p>
+                                      </div>
+                                    )}
+                                  </div>
+                                )}
+                                
+                                {detailedResults.hepatitis && (
+                                  <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
+                                    <h3 className="font-semibold text-blue-900 mb-3">Hepatitis Analysis</h3>
+                                    <div className="grid grid-cols-2 gap-4 text-sm">
+                                      <div>
+                                        <p className="text-muted-foreground">Stage</p>
+                                        <p className="font-bold text-lg">{detailedResults.hepatitis.stage || 'N/A'}</p>
+                                      </div>
+                                      <div>
+                                        <p className="text-muted-foreground">Risk Level</p>
+                                        <p className="font-bold text-lg">{detailedResults.hepatitis.risk_level || 'N/A'}</p>
+                                      </div>
+                                      <div>
+                                        <p className="text-muted-foreground">Mortality Risk</p>
+                                        <p className="font-bold text-lg">{detailedResults.hepatitis.mortality_risk?.toFixed(1) || 'N/A'}%</p>
+                                      </div>
+                                      <div>
+                                        <p className="text-muted-foreground">Complications Risk</p>
+                                        <p className="font-bold text-lg">{detailedResults.hepatitis.complications_risk?.toFixed(1) || 'N/A'}%</p>
+                                      </div>
+                                    </div>
+                                    {detailedResults.hepatitis.advice && (
+                                      <div className="mt-3 pt-3 border-t">
+                                        <p className="text-sm text-muted-foreground">
+                                          <strong>Advice:</strong> {detailedResults.hepatitis.advice}
+                                        </p>
+                                      </div>
+                                    )}
+                                  </div>
+                                )}
+                                
+                                {detailedResults.fatty_liver && (
+                                  <div className="p-4 bg-green-50 rounded-lg border border-green-200">
+                                    <h3 className="font-semibold text-green-900 mb-3">Fatty Liver Analysis</h3>
+                                    <div className="grid grid-cols-2 gap-4 text-sm">
+                                      <div>
+                                        <p className="text-muted-foreground">Diagnosis</p>
+                                        <p className="font-bold text-lg">{detailedResults.fatty_liver.diagnosis || 'N/A'}</p>
+                                      </div>
+                                      <div>
+                                        <p className="text-muted-foreground">Sick Probability</p>
+                                        <p className="font-bold text-lg">{detailedResults.fatty_liver.sick_probability?.toFixed(1) || 'N/A'}%</p>
+                                      </div>
+                                      <div>
+                                        <p className="text-muted-foreground">Has Fatty Liver</p>
+                                        <Badge variant="outline" className={
+                                          detailedResults.fatty_liver.has_fatty_liver 
+                                            ? "bg-red-100 text-red-800 border-red-200" 
+                                            : "bg-green-100 text-green-800 border-green-200"
+                                        }>
+                                          {detailedResults.fatty_liver.has_fatty_liver ? 'Yes' : 'No'}
+                                        </Badge>
+                                      </div>
+                                    </div>
+                                    {detailedResults.fatty_liver.advice && (
+                                      <div className="mt-3 pt-3 border-t">
+                                        <p className="text-sm text-muted-foreground">
+                                          <strong>Advice:</strong> {detailedResults.fatty_liver.advice}
+                                        </p>
+                                      </div>
+                                    )}
+                                  </div>
+                                )}
+                              </>
+                            )
+                          })()}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ) : (
+                    <Card className="gradient-card shadow-lg">
+                      <CardContent className="py-8">
+                        <div className="text-center">
+                          <Activity className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                          <p className="text-muted-foreground">No detailed test results available for this analysis.</p>
+                          <p className="text-sm text-muted-foreground/60 mt-2">
+                            Detailed laboratory values are not stored in the database for this report.
+                          </p>
+                        </div>
+                      </CardContent>
+                    </Card>
                   )}
-                </div>
-                {(selectedAnalysisForReport.email || selectedAnalysisForReport.phone) && (
-                  <div className="mt-3 pt-3 border-t">
-                    <div className="grid grid-cols-2 gap-4 text-sm">
-                      {selectedAnalysisForReport.email && (
-                        <div><strong>Email:</strong> {selectedAnalysisForReport.email}</div>
-                      )}
-                      {selectedAnalysisForReport.phone && (
-                        <div><strong>Phone:</strong> {selectedAnalysisForReport.phone}</div>
-                      )}
-                    </div>
-                  </div>
-                )}
-              </div>
+                </TabsContent>
 
-              {/* Test Results */}
-              <div>
-                <h2 className="text-lg font-semibold mb-3">Test Results & Interpretation</h2>
-                <table className="w-full border-collapse border border-gray-300 text-sm">
-                  <thead>
-                    <tr className="bg-gray-100">
-                      <th className="border border-gray-300 p-2 text-left">Test</th>
-                      <th className="border border-gray-300 p-2 text-center">Result</th>
-                      <th className="border border-gray-300 p-2 text-center">Normal Range</th>
-                      <th className="border border-gray-300 p-2 text-left">Interpretation</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr>
-                      <td className="border border-gray-300 p-2 font-medium">ALT (SGPT)</td>
-                      <td className="border border-gray-300 p-2 text-center">50 IU/L</td>
-                      <td className="border border-gray-300 p-2 text-center">7-56 IU/L</td>
-                      <td className="border border-gray-300 p-2">Elevated levels indicate liver cell damage</td>
-                    </tr>
-                    <tr className="bg-gray-50">
-                      <td className="border border-gray-300 p-2 font-medium">AST (SGOT)</td>
-                      <td className="border border-gray-300 p-2 text-center">20 IU/L</td>
-                      <td className="border border-gray-300 p-2 text-center">10-40 IU/L</td>
-                      <td className="border border-gray-300 p-2">Marker for liver inflammation</td>
-                    </tr>
-                    <tr>
-                      <td className="border border-gray-300 p-2 font-medium">ALP</td>
-                      <td className="border border-gray-300 p-2 text-center">80 IU/L</td>
-                      <td className="border border-gray-300 p-2 text-center">44-147 IU/L</td>
-                      <td className="border border-gray-300 p-2">Elevated in liver/bone diseases</td>
-                    </tr>
-                    <tr className="bg-gray-50">
-                      <td className="border border-gray-300 p-2 font-medium">GGT</td>
-                      <td className="border border-gray-300 p-2 text-center">50 IU/L</td>
-                      <td className="border border-gray-300 p-2 text-center">9-48 IU/L</td>
-                      <td className="border border-gray-300 p-2">Sensitive marker for liver damage</td>
-                    </tr>
-                    <tr>
-                      <td className="border border-gray-300 p-2 font-medium">Total Bilirubin</td>
-                      <td className="border border-gray-300 p-2 text-center">1.2 mg/dL</td>
-                      <td className="border border-gray-300 p-2 text-center">0.3-1.2 mg/dL</td>
-                      <td className="border border-gray-300 p-2">Elevated in liver dysfunction</td>
-                    </tr>
-                    <tr className="bg-gray-50">
-                      <td className="border border-gray-300 p-2 font-medium">Albumin</td>
-                      <td className="border border-gray-300 p-2 text-center">6 g/dL</td>
-                      <td className="border border-gray-300 p-2 text-center">3.5-5.0 g/dL</td>
-                      <td className="border border-gray-300 p-2">Protein synthesized by liver</td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
+                {/* Recommendations Tab */}
+                <TabsContent value="recommendations" className="space-y-6 mt-6">
+                  <Card className="gradient-card shadow-lg">
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2 gradient-text">
+                        <AlertCircle className="h-5 w-5 text-yellow-600" />
+                        Important Considerations
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <ul className="space-y-3 text-sm">
+                        <li className="flex items-start gap-2">
+                          <div className="w-2 h-2 rounded-full bg-yellow-500 mt-1.5 flex-shrink-0" />
+                          <span>Results should be interpreted in clinical context with patient history</span>
+                        </li>
+                        <li className="flex items-start gap-2">
+                          <div className="w-2 h-2 rounded-full bg-yellow-500 mt-1.5 flex-shrink-0" />
+                          <span>Further testing may be required for definitive diagnosis</span>
+                        </li>
+                        <li className="flex items-start gap-2">
+                          <div className="w-2 h-2 rounded-full bg-yellow-500 mt-1.5 flex-shrink-0" />
+                          <span>Regular monitoring is essential for chronic liver conditions</span>
+                        </li>
+                        <li className="flex items-start gap-2">
+                          <div className="w-2 h-2 rounded-full bg-yellow-500 mt-1.5 flex-shrink-0" />
+                          <span>Lifestyle modifications may improve liver function</span>
+                        </li>
+                      </ul>
+                    </CardContent>
+                  </Card>
 
-              {/* AI Diagnosis */}
-              <div className="bg-blue-50 p-4 rounded-lg">
-                <h2 className="text-lg font-semibold mb-3 text-blue-900">AI-Powered Diagnosis</h2>
-                <div className="space-y-2">
-                  <p className="font-medium text-blue-800">{expandDiagnosis(selectedAnalysisForReport.diagnosis)}</p>
-                  <p className="text-sm text-blue-700">Confidence Level: {selectedAnalysisForReport.confidence}%</p>
-                  <p className="text-sm text-blue-600 mt-2">
-                    This diagnosis is based on pattern recognition from extensive medical databases and should be confirmed by a qualified healthcare professional.
-                  </p>
-                </div>
-              </div>
-
-              {/* Medical Interpretation */}
-              <div>
-                <h2 className="text-lg font-semibold mb-3">Clinical Interpretation</h2>
-                <div className="bg-yellow-50 p-4 rounded-lg">
-                  <p className="text-sm leading-relaxed text-gray-800">
-                    {selectedAnalysisForReport.advice}
-                  </p>
-                  <div className="mt-3 text-sm">
-                    <strong>Key Considerations:</strong>
-                    <ul className="list-disc list-inside mt-1 space-y-1 text-gray-700">
-                      <li>Results should be interpreted in clinical context with patient history</li>
-                      <li>Further testing may be required for definitive diagnosis</li>
-                      <li>Regular monitoring is essential for chronic liver conditions</li>
-                      <li>Lifestyle modifications may improve liver function</li>
-                    </ul>
-                  </div>
-                </div>
-              </div>
-
-              {/* Recommendations */}
-              <div>
-                <h2 className="text-lg font-semibold mb-3">Treatment Recommendations</h2>
-                <div className="grid md:grid-cols-2 gap-4">
-                  <div className="bg-green-50 p-4 rounded-lg">
-                    <h3 className="font-medium text-green-800 mb-2">Immediate Actions</h3>
-                    <ul className="text-sm space-y-1 text-green-700">
-                      <li>• Consult hepatologist within 1-2 weeks</li>
-                      <li>• Avoid alcohol and hepatotoxic medications</li>
-                      <li>• Maintain adequate hydration</li>
-                      <li>• Follow balanced diet rich in antioxidants</li>
-                    </ul>
-                  </div>
-                  <div className="bg-purple-50 p-4 rounded-lg">
-                    <h3 className="font-medium text-purple-800 mb-2">Follow-up Tests</h3>
-                    <ul className="text-sm space-y-1 text-purple-700">
-                      <li>• Repeat LFTs in 2-4 weeks</li>
-                      <li>• Viral hepatitis screening (HCV, HBV)</li>
-                      <li>• Abdominal ultrasound if indicated</li>
-                      <li>• Consider liver biopsy if necessary</li>
-                    </ul>
-                  </div>
-                </div>
-              </div>
-
-              {/* References */}
-              <div className="border-t pt-4">
-                <h2 className="text-lg font-semibold mb-3">Medical References</h2>
-                <div className="text-sm space-y-1 text-gray-600">
-                  <p><strong>AASLD Guidelines:</strong> American Association for the Study of Liver Diseases</p>
-                  <p><strong>WHO Standards:</strong> World Health Organization diagnostic criteria</p>
-                  <p><strong>PubMed References:</strong> Latest research on liver function interpretation</p>
-                  <p><strong>Clinical Chemistry:</strong> Standard laboratory reference ranges</p>
-                </div>
-              </div>
+                  <Card className="gradient-card shadow-lg">
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2 gradient-text">
+                        <FileText className="h-5 w-5 text-blue-600" />
+                        Medical References
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-2 text-sm">
+                        <p><strong>AASLD Guidelines:</strong> American Association for the Study of Liver Diseases</p>
+                        <p><strong>WHO Standards:</strong> World Health Organization diagnostic criteria</p>
+                        <p><strong>PubMed References:</strong> Latest research on liver function interpretation</p>
+                        <p><strong>Clinical Chemistry:</strong> Standard laboratory reference ranges</p>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </TabsContent>
+              </Tabs>
 
               {/* Footer */}
-              <div className="text-center text-xs text-gray-500 border-t pt-4">
+              <div className="text-center text-xs text-muted-foreground border-t pt-4 mt-6">
                 <p>This report is generated by AI analysis and should not replace professional medical advice.</p>
                 <p>Please consult with a qualified healthcare provider for interpretation and treatment decisions.</p>
               </div>
@@ -3212,32 +3452,20 @@ export function AdvancedReports({ className }: AdvancedReportsProps) {
               if (!selectedAnalysisForReport) return
 
               try {
+                const element = document.getElementById('medical-report')
+                if (!element) return
+
+                const canvas = await html2canvas(element, {
+                  scale: 2,
+                  useCORS: true,
+                  logging: false
+                })
+                
+                const imgData = canvas.toDataURL('image/png')
                 const pdf = new jsPDF('p', 'mm', 'a4')
-                const pageWidth = pdf.internal.pageSize.getWidth()
-                const margin = 20
-                let yPosition = margin
-
-                // Add title
-                pdf.setFontSize(20)
-                pdf.text('Medical Report', margin, yPosition)
-                yPosition += 15
-
-                // Add patient info
-                pdf.setFontSize(14)
-                pdf.text('Patient Information:', margin, yPosition)
-                yPosition += 10
-
-                pdf.setFontSize(12)
-                pdf.text(`Name: ${selectedAnalysisForReport.patient_name}`, margin, yPosition)
-                yPosition += 8
-                pdf.text(`ID: ${selectedAnalysisForReport.patient_id_display}`, margin, yPosition)
-                yPosition += 8
-                pdf.text(`Diagnosis: ${expandDiagnosis(selectedAnalysisForReport.diagnosis)}`, margin, yPosition)
-                yPosition += 8
-                pdf.text(`Confidence: ${selectedAnalysisForReport.confidence}%`, margin, yPosition)
-                yPosition += 8
-                pdf.text(`Advice: ${selectedAnalysisForReport.advice}`, margin, yPosition, { maxWidth: pageWidth - 2 * margin })
-
+                const imgWidth = 210
+                const imgHeight = (canvas.height * imgWidth) / canvas.width
+                pdf.addImage(imgData, 'PNG', 0, 0, imgWidth, imgHeight)
                 pdf.save(`medical-report-${selectedAnalysisForReport.patient_name}-${format(new Date(), 'yyyy-MM-dd')}.pdf`)
                 toast.success('Medical report PDF exported successfully')
               } catch (error) {
@@ -4393,62 +4621,74 @@ export function AdvancedReports({ className }: AdvancedReportsProps) {
                 </div>
               )}
 
-              {selectedDetail.type === 'hepatitis' && (
-                <div className="rounded-xl gradient-card p-4 md:p-5">
-                  <div className="flex items-center gap-3 mb-3">
-                    <div className="flex h-8 w-8 items-center justify-center rounded-lg gradient-primary animate-glow">
-                      <Activity className="h-4 w-4 text-primary-foreground" />
+              {selectedDetail.type === 'hepatitis' && (() => {
+                const riskLevel = selectedDetail.data.risk_level || 'low';
+                
+                const getHepatitisRiskColor = (level: string) => {
+                  if (level === 'critical') return "bg-red-100 text-red-800 border-red-200";
+                  if (level === 'high') return "bg-yellow-100 text-yellow-800 border-yellow-200";
+                  return "bg-green-100 text-green-800 border-green-200";
+                };
+                
+                const getHepatitisRiskIconColor = (level: string) => {
+                  if (level === 'critical') return "text-red-600";
+                  if (level === 'high') return "text-yellow-600";
+                  return "text-green-600";
+                };
+
+                return (
+                  <div className="rounded-xl gradient-card p-4 md:p-5">
+                    <div className="flex items-center gap-3 mb-3">
+                      <div className={`flex h-8 w-8 items-center justify-center rounded-lg ${getHepatitisRiskColor(riskLevel)} animate-glow`}>
+                        <Activity className={`h-4 w-4 ${getHepatitisRiskIconColor(riskLevel)}`} />
+                      </div>
+                      <h3 className="text-lg font-semibold gradient-text">Hepatitis Analysis</h3>
                     </div>
-                    <h3 className="text-lg font-semibold gradient-text">Hepatitis Analysis</h3>
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className={`flex h-6 w-6 items-center justify-center rounded-lg ${getHepatitisRiskColor(riskLevel)}`}>
+                            {riskLevel === 'critical' ? <AlertCircle className="h-4 w-4 text-red-600" /> :
+                             riskLevel === 'high' ? <AlertCircle className="h-4 w-4 text-yellow-600" /> :
+                             <CheckCircle2 className="h-4 w-4 text-green-600" />}
+                          </div>
+                          <div>
+                            <p className="font-semibold text-sm">Stage {selectedDetail.data.stage ?? 0} ({selectedDetail.data.stage_description || 'Unknown'})</p>
+                            <p className="text-xs text-muted-foreground">Fibrosis Assessment</p>
+                          </div>
+                        </div>
+                        <Badge variant="outline" className={`${getHepatitisRiskColor(riskLevel)} font-semibold text-xs`}>
+                          Stage {selectedDetail.data.stage ?? 0}
+                        </Badge>
+                      </div>
+                      <div className="grid grid-cols-2 gap-4 text-sm">
+                        <div>
+                          <p className="font-medium">Complications Risk</p>
+                          <p className="text-muted-foreground">{selectedDetail.data.complications_risk ?? 0}%</p>
+                        </div>
+                        <div>
+                          <p className="font-medium">Survival Risk</p>
+                          <p className="text-muted-foreground">{selectedDetail.data.mortality_risk ?? 0}%</p>
+                        </div>
+                      </div>
+                      <div className="border-t pt-3">
+                        <p className="text-xs font-medium mb-2">Liver Function Scores</p>
+                        <div className="grid grid-cols-2 gap-4 text-xs">
+                          <div>
+                            <p className="font-medium">APRI Score</p>
+                            <p className="text-muted-foreground">{(selectedDetail.data.apri_score ?? 0).toFixed(2)}</p>
+                          </div>
+                          <div>
+                            <p className="font-medium">ALBI Score</p>
+                            <p className="text-muted-foreground">{(selectedDetail.data.albi_score ?? 0).toFixed(2)}</p>
+                          </div>
+                        </div>
+                      </div>
+                      <p className="text-sm text-muted-foreground">{selectedDetail.data.advice || "No advice available"}</p>
+                    </div>
                   </div>
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-background/50">
-                          {selectedDetail.data.confidence >= 80 ? <CheckCircle2 className="h-4 w-4 text-green-600" /> :
-                           selectedDetail.data.confidence >= 60 ? <AlertCircle className="h-4 w-4 text-yellow-600" /> :
-                           <AlertCircle className="h-4 w-4 text-red-600" />}
-                        </div>
-                        <div>
-                          <p className="font-semibold text-sm">Stage {selectedDetail.data.stage ?? 0} ({selectedDetail.data.stage_description || 'Unknown'})</p>
-                          <p className="text-xs text-muted-foreground">Fibrosis Assessment</p>
-                        </div>
-                      </div>
-                      <Badge variant="outline" className={
-                        (selectedDetail.data.stage === 0 || selectedDetail.data.stage === 1) ? "bg-green-100 text-green-800 border-green-200" :
-                        selectedDetail.data.stage === 2 ? "bg-yellow-100 text-yellow-800 border-yellow-200" :
-                        "bg-red-100 text-red-800 border-red-200"
-                      } style={{ fontWeight: 'bold', fontSize: '12px' }}>
-                        Stage {selectedDetail.data.stage ?? 0}
-                      </Badge>
-                    </div>
-                    <div className="grid grid-cols-2 gap-4 text-sm">
-                      <div>
-                        <p className="font-medium">Complications Risk</p>
-                        <p className="text-muted-foreground">{selectedDetail.data.complications_risk ?? 0}%</p>
-                      </div>
-                      <div>
-                        <p className="font-medium">Mortality Risk</p>
-                        <p className="text-muted-foreground">{selectedDetail.data.mortality_risk ?? 0}%</p>
-                      </div>
-                    </div>
-                    <div className="border-t pt-3">
-                      <p className="text-xs font-medium mb-2">Liver Function Scores</p>
-                      <div className="grid grid-cols-2 gap-4 text-xs">
-                        <div>
-                          <p className="font-medium">APRI Score</p>
-                          <p className="text-muted-foreground">{(selectedDetail.data.apri_score ?? 0).toFixed(2)}</p>
-                        </div>
-                        <div>
-                          <p className="font-medium">ALBI Score</p>
-                          <p className="text-muted-foreground">{(selectedDetail.data.albi_score ?? 0).toFixed(2)}</p>
-                        </div>
-                      </div>
-                    </div>
-                    <p className="text-sm text-muted-foreground">{selectedDetail.data.advice || "No advice available"}</p>
-                  </div>
-                </div>
-              )}
+                );
+              })()}
 
               {selectedDetail.type === 'cancer' && (
                 <div className="rounded-xl gradient-card p-4 md:p-5">

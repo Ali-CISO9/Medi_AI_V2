@@ -443,10 +443,31 @@ class DiagnosisEngine:
 
         # Calculate mathematical validators
         ast_upper_limit = 40  # IU/L
-        apri_score = (profile['ast'] / ast_upper_limit / (profile['platelets'] / 100000)) * 100
+
+        # Fix APRI score calculation: Handle platelets in different formats
+        # Standard unit for platelets in APRI formula is 10^9/L
+        platelets = profile['platelets']
+
+        # Detect and convert platelets to standard unit (10^9/L)
+        # Scenario 1: Normalized value (e.g., 1.27 instead of 127)
+        if platelets < 10:
+            platelets = platelets * 100  # Convert to standard unit
+        # Scenario 2: Actual count (e.g., 280,000 instead of 280)
+        elif platelets > 1000:
+            platelets = platelets / 1000  # Convert to standard unit
+
+        # APRI Formula: ((AST / Upper Limit) / Platelets) × 100
+        # Platelets should be in 10^9/L (standard unit)
+        apri_score = (profile['ast'] / ast_upper_limit / platelets) * 100
 
         import math
         albi_score = (math.log10(profile['bilirubin'] * 17.1) * 0.66) + (profile['albumin'] * 10 * -0.085)
+
+        # Generate main advice based on mortality risk (Critical if > 0.5)
+        if mortality_risk > 0.5:
+            advice = "Critical - High survival risk detected. Immediate medical intervention required."
+        else:
+            advice = "Stable - Liver function is within acceptable range. Continue monitoring."
 
         return {
             'stage': stage_pred,
@@ -456,6 +477,7 @@ class DiagnosisEngine:
             'stage_advice': self._get_stage_advice(stage_pred),
             'complications_advice': self._get_complications_advice(complications_pred),
             'status_advice': self._get_status_advice(mortality_risk),
+            'advice': advice,  # Main advice key for UI display
             'apri_score': round(apri_score, 2),
             'albi_score': round(albi_score, 2),
             'risk_level': 'critical' if mortality_risk > 0.8 else 'high' if mortality_risk > 0.5 else 'moderate' if mortality_risk > 0.2 else 'low'

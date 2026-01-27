@@ -685,62 +685,74 @@ export function MedicalRecords() {
                 </div>
               )}
 
-              {selectedDetail.type === 'hepatitis' && (
-                <div className="rounded-xl gradient-card p-4 md:p-5">
-                  <div className="flex items-center gap-3 mb-3">
-                    <div className="flex h-8 w-8 items-center justify-center rounded-lg gradient-primary animate-glow">
-                      <Activity className="h-4 w-4 text-primary-foreground" />
+              {selectedDetail.type === 'hepatitis' && (() => {
+                const riskLevel = selectedDetail.data.risk_level || 'low';
+                
+                const getHepatitisRiskColor = (level: string) => {
+                  if (level === 'critical') return "bg-red-100 text-red-800 border-red-200";
+                  if (level === 'high') return "bg-yellow-100 text-yellow-800 border-yellow-200";
+                  return "bg-green-100 text-green-800 border-green-200";
+                };
+                
+                const getHepatitisRiskIconColor = (level: string) => {
+                  if (level === 'critical') return "text-red-600";
+                  if (level === 'high') return "text-yellow-600";
+                  return "text-green-600";
+                };
+
+                return (
+                  <div className="rounded-xl gradient-card p-4 md:p-5">
+                    <div className="flex items-center gap-3 mb-3">
+                      <div className={`flex h-8 w-8 items-center justify-center rounded-lg ${getHepatitisRiskColor(riskLevel)} animate-glow`}>
+                        <Activity className={`h-4 w-4 ${getHepatitisRiskIconColor(riskLevel)}`} />
+                      </div>
+                      <h3 className="text-lg font-semibold gradient-text">Hepatitis Analysis</h3>
                     </div>
-                    <h3 className="text-lg font-semibold gradient-text">Hepatitis Analysis</h3>
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className={`flex h-6 w-6 items-center justify-center rounded-lg ${getHepatitisRiskColor(riskLevel)}`}>
+                            {riskLevel === 'critical' ? <AlertCircle className="h-4 w-4 text-red-600" /> :
+                             riskLevel === 'high' ? <AlertCircle className="h-4 w-4 text-yellow-600" /> :
+                             <CheckCircle2 className="h-4 w-4 text-green-600" />}
+                          </div>
+                          <div>
+                            <p className="font-semibold text-sm">Stage {selectedDetail.data.stage ?? 0} ({selectedDetail.data.stage_description || 'Unknown'})</p>
+                            <p className="text-xs text-muted-foreground">Fibrosis Assessment</p>
+                          </div>
+                        </div>
+                        <Badge variant="outline" className={`${getHepatitisRiskColor(riskLevel)} font-semibold text-xs`}>
+                          Stage {selectedDetail.data.stage ?? 0}
+                        </Badge>
+                      </div>
+                      <div className="grid grid-cols-2 gap-4 text-sm">
+                        <div>
+                          <p className="font-medium">Complications Risk</p>
+                          <p className="text-muted-foreground">{selectedDetail.data.complications_risk ?? 0}%</p>
+                        </div>
+                        <div>
+                          <p className="font-medium">Survival Risk</p>
+                          <p className="text-muted-foreground">{selectedDetail.data.mortality_risk ?? 0}%</p>
+                        </div>
+                      </div>
+                      <div className="border-t pt-3">
+                        <p className="text-xs font-medium mb-2">Liver Function Scores</p>
+                        <div className="grid grid-cols-2 gap-4 text-xs">
+                          <div>
+                            <p className="font-medium">APRI Score</p>
+                            <p className="text-muted-foreground">{(selectedDetail.data.apri_score ?? 0).toFixed(2)}</p>
+                          </div>
+                          <div>
+                            <p className="font-medium">ALBI Score</p>
+                            <p className="text-muted-foreground">{(selectedDetail.data.albi_score ?? 0).toFixed(2)}</p>
+                          </div>
+                        </div>
+                      </div>
+                      <p className="text-sm text-muted-foreground">{selectedDetail.data.advice || "No advice available"}</p>
+                    </div>
                   </div>
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-background/50">
-                          {selectedDetail.data.confidence >= 80 ? <CheckCircle2 className="h-4 w-4 text-green-600" /> :
-                            selectedDetail.data.confidence >= 60 ? <AlertCircle className="h-4 w-4 text-yellow-600" /> :
-                            <AlertCircle className="h-4 w-4 text-red-600" />}
-                        </div>
-                        <div>
-                          <p className="font-semibold text-sm">Stage {selectedDetail.data.stage ?? 0} ({selectedDetail.data.stage_description || 'Unknown'})</p>
-                          <p className="text-xs text-muted-foreground">Fibrosis Assessment</p>
-                        </div>
-                      </div>
-                      <Badge variant="outline" className={
-                        (selectedDetail.data.stage === 0 || selectedDetail.data.stage === 1) ? "bg-green-100 text-green-800 border-green-200" :
-                        selectedDetail.data.stage === 2 ? "bg-yellow-100 text-yellow-800 border-yellow-200" :
-                        "bg-red-100 text-red-800 border-red-200"
-                      } style={{ fontWeight: 'bold', fontSize: '12px' }}>
-                        Stage {selectedDetail.data.stage ?? 0}
-                      </Badge>
-                    </div>
-                    <div className="grid grid-cols-2 gap-4 text-sm">
-                      <div>
-                        <p className="font-medium">Complications Risk</p>
-                        <p className="text-muted-foreground">{selectedDetail.data.complications_risk ?? 0}%</p>
-                      </div>
-                      <div>
-                        <p className="font-medium">Mortality Risk</p>
-                        <p className="text-muted-foreground">{selectedDetail.data.mortality_risk ?? 0}%</p>
-                      </div>
-                    </div>
-                    <div className="border-t pt-3">
-                      <p className="text-xs font-medium mb-2">Liver Function Scores</p>
-                      <div className="grid grid-cols-2 gap-4 text-xs">
-                        <div>
-                          <p className="font-medium">APRI Score</p>
-                          <p className="text-muted-foreground">{(selectedDetail.data.apri_score ?? 0).toFixed(2)}</p>
-                        </div>
-                        <div>
-                          <p className="font-medium">ALBI Score</p>
-                          <p className="text-muted-foreground">{(selectedDetail.data.albi_score ?? 0).toFixed(2)}</p>
-                        </div>
-                      </div>
-                    </div>
-                    <p className="text-sm text-muted-foreground">{selectedDetail.data.advice || "No advice available"}</p>
-                  </div>
-                </div>
-              )}
+                );
+              })()}
 
               {selectedDetail.type === 'cancer' && (
                 <div className="rounded-xl gradient-card p-4 md:p-5">
