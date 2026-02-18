@@ -16,9 +16,16 @@ load_dotenv()
 
 from diagnosis_engine import DiagnosisEngine
 from database import get_db, engine, Base
-from models import Patient, LabTest, MedicalReport, User
+from models import Patient, LabTest, MedicalReport, User, AuditLog, ALL_PERMISSIONS, DEFAULT_PERMISSIONS, DOCTOR_PRESET_PERMISSIONS
 from sqlalchemy.orm import Session
-from sqlalchemy import desc
+from sqlalchemy import desc, func
+from auth import (
+    hash_password, verify_password,
+    create_access_token, create_refresh_token, decode_token,
+    set_auth_cookies, clear_auth_cookies,
+    get_current_user, require_permission,
+    log_audit, verify_csrf,
+)
 
 def make_serializable(obj):
     """Recursively convert NumPy types to Python native types for JSON."""
@@ -35,6 +42,12 @@ def make_serializable(obj):
         # NumPy array
         return make_serializable(obj.tolist())
     return obj
+
+
+def _is_admin(user: User) -> bool:
+    """Check if a user has admin-level access (bypasses doctor scoping)."""
+    return user.role == "admin" or user.has_permission("can_access_admin")
+
 
 # Initialize DiagnosisEngine
 diagnosis_engine = DiagnosisEngine()
@@ -111,7 +124,7 @@ async def root():
     return {"message": "Medical AI Backend API", "status": "running"}
 
 @app.post("/analyze")
-async def analyze_patient(user_profile: dict, db: Session = Depends(get_db)):
+async def analyze_patient(user_profile: dict, db: Session = Depends(get_db), current_user: User = require_permission("can_run_analysis")):
     try:
         print(f"DEBUG: Received Profile: {user_profile}")
 
@@ -185,6 +198,7 @@ async def analyze_patient(user_profile: dict, db: Session = Depends(get_db)):
                     # Save the analysis to database
                     medical_report = MedicalReport(
                         patient_id=patient.id,
+                        doctor_id=current_user.id,
                         diagnosis=diagnosis,
                         confidence=confidence,
                         advice=advice,
@@ -194,6 +208,40 @@ async def analyze_patient(user_profile: dict, db: Session = Depends(get_db)):
                     db.commit()
                     db.refresh(medical_report)
                     print(f"Saved analysis for patient {patient.name} (ID: {patient.id}) - Risk: {db_risk_level}")
+
+                    # ─────────────────────────────────────────────────────
+                    # NEW: Save Lab Parameters
+                    # ─────────────────────────────────────────────────────
+                    try:
+                        # Define keys to exclude (demographics, mode, etc.)
+                        exclude_keys = {'mode', 'user_profile', 'patient_id', 'age', 'gender', 'name', 'department', 'doctor_id'}
+                        
+                        # Iterate through input profile data
+                        for key, value in profile.items():
+                            if key not in exclude_keys and value is not None:
+                                # Determine status based on value (simplified logic)
+                                # In a real app, you'd compare against specific ranges for each test
+                                status = "normal" 
+                                normal_range = "N/A"
+                                unit = "N/A"
+
+                                # Create LabTest record
+                                lab_test = LabTest(
+                                    patient_id=patient.id,
+                                    test_name=key.replace('_', ' ').title(),
+                                    value=float(value) if isinstance(value, (int, float, str)) and str(value).replace('.','',1).isdigit() else 0.0,
+                                    unit=unit,
+                                    normal_range=normal_range,
+                                    status=status,
+                                    date=func.now()
+                                )
+                                db.add(lab_test)
+                        
+                        db.commit()
+                        print(f"Saved lab tests for patient {patient.name}")
+                    except Exception as lab_error:
+                        print(f"Error saving lab tests: {lab_error}")
+                        db.rollback() # Rollback only the lab test part if it fails, though report is already committed
                 else:
                     print(f"Patient with ID {patient_id_in_data} not found, analysis not saved")
             except Exception as save_error:
@@ -240,7 +288,7 @@ async def analyze_patient(user_profile: dict, db: Session = Depends(get_db)):
         raise HTTPException(status_code=400, detail=error_message)
 
 @app.post("/reports")
-async def create_report(report: SaveReportRequest, db: Session = Depends(get_db)):
+async def create_report(report: SaveReportRequest, db: Session = Depends(get_db), current_user: User = require_permission("can_run_analysis")):
     try:
         print(f"DEBUG: Received Report Payload: {report}")
         # Check if patient exists
@@ -258,6 +306,7 @@ async def create_report(report: SaveReportRequest, db: Session = Depends(get_db)
         # Create new report
         new_report = MedicalReport(
             patient_id=patient_id,
+            doctor_id=current_user.id,
             diagnosis=report.diagnosis,
             confidence=float(report.confidence),  # Explicit cast to float
             advice=report.advice,
@@ -285,11 +334,14 @@ async def create_report(report: SaveReportRequest, db: Session = Depends(get_db)
 
 
 @app.get("/patient-data")
-async def get_patient_data(db: Session = Depends(get_db)):
+async def get_patient_data(db: Session = Depends(get_db), current_user: User = require_permission("can_view_patients")):
     try:
         print(f"DATABASE_URL in endpoint: {os.getenv('DATABASE_URL')}")
-        # Get the first patient (for demo purposes)
-        patient = db.query(Patient).first()
+        # Get the first patient scoped to this doctor
+        query = db.query(Patient)
+        if not _is_admin(current_user):
+            query = query.filter(Patient.doctor_id == current_user.id)
+        patient = query.first()
         print(f"Patient found: {patient}")
         print(f"Patient name: {patient.name if patient else 'None'}")
         print(f"Patient ID: {patient.id if patient else 'None'}")
@@ -368,7 +420,7 @@ async def get_patient_data(db: Session = Depends(get_db)):
         raise HTTPException(status_code=500, detail="Database error")
 
 @app.get("/lab-tests")
-async def get_lab_tests(patientId: str, db: Session = Depends(get_db)):
+async def get_lab_tests(patientId: str, db: Session = Depends(get_db), current_user: User = require_permission("can_view_patients")):
     try:
         # Find patient by patient ID
         patient = db.query(Patient).filter(Patient.patient_id == patientId).first()
@@ -401,7 +453,7 @@ async def get_lab_tests(patientId: str, db: Session = Depends(get_db)):
         raise HTTPException(status_code=500, detail="Database error")
 
 @app.get("/patients")
-async def get_patients(request: Request, db: Session = Depends(get_db)):
+async def get_patients(request: Request, db: Session = Depends(get_db), current_user: User = require_permission("can_view_patients")):
     try:
         # Parse query parameters manually
         query_params = dict(request.query_params)
@@ -411,6 +463,10 @@ async def get_patients(request: Request, db: Session = Depends(get_db)):
         query = db.query(Patient)
         if status != "all":
             query = query.filter(Patient.status == status)
+
+        # Doctor scoping: non-admin users only see their own patients
+        if not _is_admin(current_user):
+            query = query.filter(Patient.doctor_id == current_user.id)
 
         patients = query.order_by(desc(Patient.created_at)).all()
 
@@ -441,13 +497,17 @@ async def get_patients(request: Request, db: Session = Depends(get_db)):
         raise HTTPException(status_code=500, detail="Database error")
 
 @app.put("/patients/{patient_id}/archive")
-async def archive_patient(patient_id: str, db: Session = Depends(get_db)):
+async def archive_patient(patient_id: str, db: Session = Depends(get_db), current_user: User = require_permission("can_edit_patients")):
     try:
         # Find the patient by database ID (integer)
         patient_id_int = int(patient_id)
         patient = db.query(Patient).filter(Patient.id == patient_id_int).first()
         if not patient:
             raise HTTPException(status_code=404, detail="Patient not found")
+
+        # Ownership check
+        if not _is_admin(current_user) and patient.doctor_id != current_user.id:
+            raise HTTPException(status_code=403, detail="Not your patient")
 
         if patient.status == "archived":
             raise HTTPException(status_code=400, detail="Patient is already archived")
@@ -469,13 +529,17 @@ async def archive_patient(patient_id: str, db: Session = Depends(get_db)):
         raise HTTPException(status_code=500, detail="Database error")
 
 @app.put("/patients/{patient_id}/restore")
-async def restore_patient(patient_id: str, db: Session = Depends(get_db)):
+async def restore_patient(patient_id: str, db: Session = Depends(get_db), current_user: User = require_permission("can_edit_patients")):
     try:
         # Find the patient by database ID (integer)
         patient_id_int = int(patient_id)
         patient = db.query(Patient).filter(Patient.id == patient_id_int).first()
         if not patient:
             raise HTTPException(status_code=404, detail="Patient not found")
+
+        # Ownership check
+        if not _is_admin(current_user) and patient.doctor_id != current_user.id:
+            raise HTTPException(status_code=403, detail="Not your patient")
 
         if patient.status == "active":
             raise HTTPException(status_code=400, detail="Patient is already active")
@@ -500,7 +564,7 @@ async def restore_patient(patient_id: str, db: Session = Depends(get_db)):
         raise HTTPException(status_code=500, detail="Database error")
 
 @app.put("/patients/{patient_id}")
-async def update_patient(patient_id: str, patient_data: dict = None, db: Session = Depends(get_db)):
+async def update_patient(patient_id: str, patient_data: dict = None, db: Session = Depends(get_db), current_user: User = require_permission("can_edit_patients")):
     try:
         # Find patient by database ID (integer)
         patient_id_int = int(patient_id)
@@ -508,6 +572,10 @@ async def update_patient(patient_id: str, patient_data: dict = None, db: Session
 
         if not patient:
             raise HTTPException(status_code=404, detail="Patient not found")
+
+        # Ownership check
+        if not _is_admin(current_user) and patient.doctor_id != current_user.id:
+            raise HTTPException(status_code=403, detail="Not your patient")
 
         # Update patient fields
         if "name" in patient_data:
@@ -550,13 +618,17 @@ async def update_patient(patient_id: str, patient_data: dict = None, db: Session
         raise HTTPException(status_code=500, detail="Database error")
 
 @app.delete("/patients/{patient_id}")
-async def delete_patient(patient_id: str, db: Session = Depends(get_db)):
+async def delete_patient(patient_id: str, db: Session = Depends(get_db), current_user: User = require_permission("can_delete_patients")):
     try:
         # Find the patient by database ID (integer)
         patient_id_int = int(patient_id)
         patient = db.query(Patient).filter(Patient.id == patient_id_int).first()
         if not patient:
             raise HTTPException(status_code=404, detail="Patient not found")
+
+        # Ownership check
+        if not _is_admin(current_user) and patient.doctor_id != current_user.id:
+            raise HTTPException(status_code=403, detail="Not your patient")
 
         if patient.status == "active":
             raise HTTPException(status_code=400, detail="Cannot delete active patient. Archive first.")
@@ -578,7 +650,7 @@ async def delete_patient(patient_id: str, db: Session = Depends(get_db)):
         raise HTTPException(status_code=500, detail="Database error")
 
 @app.post("/patients")
-async def create_or_update_patient(patient_data: dict, db: Session = Depends(get_db)):
+async def create_or_update_patient(patient_data: dict, db: Session = Depends(get_db), current_user: User = require_permission("can_create_patients")):
     try:
         patient_id = patient_data.get("patient_id")
         name = patient_data.get("name")
@@ -597,11 +669,12 @@ async def create_or_update_patient(patient_data: dict, db: Session = Depends(get
         # birth_date is now stored as string
         birth_date = birth_date_str if birth_date_str else None
 
-        # Create new patient
+        # Create new patient (auto-assign to creating doctor)
         new_patient = Patient(
             name=name,
             birth_date=birth_date,
             patient_id=patient_id,
+            doctor_id=current_user.id,
             email=patient_data.get("email"),
             phone=patient_data.get("phone"),
             profile_picture=patient_data.get("profile_picture"),
@@ -632,7 +705,7 @@ async def create_or_update_patient(patient_data: dict, db: Session = Depends(get
         raise HTTPException(status_code=500, detail="Database error")
 
 @app.get("/patient-analyses")
-async def get_patient_analyses(request: Request, db: Session = Depends(get_db)):
+async def get_patient_analyses(request: Request, db: Session = Depends(get_db), current_user: User = require_permission("can_view_reports")):
     try:
         # Parse query parameters manually
         query_params = dict(request.query_params)
@@ -643,6 +716,13 @@ async def get_patient_analyses(request: Request, db: Session = Depends(get_db)):
         query = db.query(MedicalReport)
         if not include_archived:
             query = query.filter(MedicalReport.status != "archived")
+
+        # Doctor scoping: non-admin users only see analyses for their own patients
+        if not _is_admin(current_user):
+            doctor_patient_ids = [
+                p.id for p in db.query(Patient.id).filter(Patient.doctor_id == current_user.id).all()
+            ]
+            query = query.filter(MedicalReport.patient_id.in_(doctor_patient_ids))
 
         # Filter by patient_id if provided (matches patient.patient_id string field)
         if patient_id_filter:
@@ -675,6 +755,13 @@ async def get_patient_analyses(request: Request, db: Session = Depends(get_db)):
                 else:
                     risk_level = "high"
 
+            # Look up doctor full name from User table
+            doctor_display_name = patient.doctor_name if patient else None
+            if patient and patient.doctor_id:
+                doctor_user = db.query(User).filter(User.id == patient.doctor_id).first()
+                if doctor_user and doctor_user.full_name:
+                    doctor_display_name = doctor_user.full_name
+
             patient_data = {
                 "id": analysis.id,
                 "patient_id": analysis.patient_id,
@@ -694,7 +781,7 @@ async def get_patient_analyses(request: Request, db: Session = Depends(get_db)):
                 "phone": patient.phone if patient else None,
                 "profile_picture": patient.profile_picture if patient else None,
                 "department": patient.department if patient else None,
-                "doctor_name": patient.doctor_name if patient else None,
+                "doctor_name": doctor_display_name,
             }
             analyses_response.append(patient_data)
 
@@ -707,7 +794,7 @@ async def get_patient_analyses(request: Request, db: Session = Depends(get_db)):
         raise HTTPException(status_code=500, detail="Database error")
 
 @app.put("/patient-analyses/{analysis_id}")
-async def update_patient_analysis(analysis_id: int, analysis_data: dict, db: Session = Depends(get_db)):
+async def update_patient_analysis(analysis_id: int, analysis_data: dict, db: Session = Depends(get_db), current_user: User = require_permission("can_edit_patients")):
     try:
         analysis = db.query(MedicalReport).filter(MedicalReport.id == analysis_id).first()
 
@@ -744,7 +831,7 @@ async def update_patient_analysis(analysis_id: int, analysis_data: dict, db: Ses
         raise HTTPException(status_code=500, detail="Database error")
 
 @app.delete("/patient-analyses/{analysis_id}")
-async def delete_patient_analysis(analysis_id: int, db: Session = Depends(get_db)):
+async def delete_patient_analysis(analysis_id: int, db: Session = Depends(get_db), current_user: User = require_permission("can_delete_patients")):
     try:
         analysis = db.query(MedicalReport).filter(MedicalReport.id == analysis_id).first()
 
@@ -759,6 +846,463 @@ async def delete_patient_analysis(analysis_id: int, db: Session = Depends(get_db
     except Exception as e:
         print(f"Database error in delete_patient_analysis: {e}")
         raise HTTPException(status_code=500, detail="Database error")
+
+# ═══════════════════════════════════════════════════════════
+# AUTH ROUTES
+# ═══════════════════════════════════════════════════════════
+
+class LoginRequest(BaseModel):
+    username: str
+    password: str
+
+class RegisterRequest(BaseModel):
+    username: str
+    email: str
+    password: str
+    full_name: Optional[str] = None
+    role: Optional[str] = "user"
+    permissions: Optional[Dict[str, bool]] = None
+
+
+@app.post("/auth/login")
+async def login(body: LoginRequest, request: Request, db: Session = Depends(get_db)):
+    """Authenticate user, set JWT cookies, return user info + permissions."""
+    user = db.query(User).filter(User.username == body.username).first()
+    if not user or not verify_password(body.password, user.hashed_password):
+        raise HTTPException(status_code=401, detail="Invalid username or password")
+    if not user.is_active:
+        raise HTTPException(status_code=403, detail="Account is deactivated")
+
+    # Create tokens
+    access_token = create_access_token({"sub": str(user.id)})
+    refresh_token = create_refresh_token({"sub": str(user.id)})
+
+    # Update last_login
+    user.last_login = datetime.utcnow()
+    db.commit()
+
+    # Audit log
+    client_ip = request.client.host if request.client else None
+    log_audit(db, user.id, "LOGIN", ip_address=client_ip)
+
+    # Build response with cookies
+    response = JSONResponse(content={
+        "success": True,
+        "user": {
+            "id": user.id,
+            "username": user.username,
+            "email": user.email,
+            "fullName": user.full_name or user.username,
+            "role": user.role,
+            "permissions": user.get_permissions(),
+        },
+    })
+    set_auth_cookies(response, access_token, refresh_token)
+    return response
+
+
+@app.post("/auth/logout")
+async def logout(request: Request, db: Session = Depends(get_db)):
+    """Clear auth cookies."""
+    response = JSONResponse(content={"success": True, "message": "Logged out"})
+    clear_auth_cookies(response)
+
+    # Try to log audit if user was authenticated
+    try:
+        token = request.cookies.get("access_token")
+        if token:
+            payload = decode_token(token)
+            user_id = payload.get("sub")
+            if user_id:
+                client_ip = request.client.host if request.client else None
+                log_audit(db, int(user_id), "LOGOUT", ip_address=client_ip)
+    except Exception:
+        pass  # Don't fail logout if audit logging fails
+
+    return response
+
+
+@app.post("/auth/refresh")
+async def refresh_token(request: Request, db: Session = Depends(get_db)):
+    """Refresh access token using refresh token cookie."""
+    token = request.cookies.get("refresh_token")
+    if not token:
+        raise HTTPException(status_code=401, detail="No refresh token")
+
+    payload = decode_token(token)
+    if payload.get("type") != "refresh":
+        raise HTTPException(status_code=401, detail="Invalid token type")
+
+    user_id = payload.get("sub")
+    if not user_id:
+        raise HTTPException(status_code=401, detail="Invalid token")
+
+    user = db.query(User).filter(User.id == int(user_id)).first()
+    if not user or not user.is_active:
+        raise HTTPException(status_code=401, detail="User not found or deactivated")
+
+    new_access = create_access_token({"sub": str(user.id)})
+    new_refresh = create_refresh_token({"sub": str(user.id)})
+
+    response = JSONResponse(content={"success": True})
+    set_auth_cookies(response, new_access, new_refresh)
+    return response
+
+
+@app.get("/auth/me")
+async def get_me(current_user: User = Depends(get_current_user)):
+    """Return the current authenticated user's info + permissions."""
+    return {
+        "id": current_user.id,
+        "username": current_user.username,
+        "email": current_user.email,
+        "fullName": current_user.full_name or current_user.username,
+        "role": current_user.role,
+        "permissions": current_user.get_permissions(),
+    }
+
+
+@app.post("/auth/register")
+async def register_user(
+    body: RegisterRequest,
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: User = require_permission("can_manage_users"),
+):
+    """Admin-only: create a new user account."""
+    # Check duplicates
+    existing = db.query(User).filter(
+        (User.username == body.username) | (User.email == body.email)
+    ).first()
+    if existing:
+        raise HTTPException(status_code=400, detail="Username or email already exists")
+
+    # Pick the right default permissions based on role
+    if body.permissions:
+        perms = body.permissions
+    elif body.role == "doctor":
+        perms = DOCTOR_PRESET_PERMISSIONS.copy()
+    else:
+        perms = DEFAULT_PERMISSIONS.copy()
+
+    # Safety: only admin role may have can_access_admin
+    if (body.role or "user") != "admin":
+        perms["can_access_admin"] = False
+
+    new_user = User(
+        username=body.username,
+        email=body.email,
+        hashed_password=hash_password(body.password),
+        full_name=body.full_name,
+        role=body.role or "user",
+        is_active=1,
+        permissions=json.dumps(perms),
+    )
+    db.add(new_user)
+    db.commit()
+    db.refresh(new_user)
+
+    # Audit
+    client_ip = request.client.host if request.client else None
+    log_audit(db, current_user.id, "CREATE_USER", resource="users",
+              resource_id=new_user.id, ip_address=client_ip)
+
+    return {
+        "success": True,
+        "user": {
+            "id": new_user.id,
+            "username": new_user.username,
+            "email": new_user.email,
+            "fullName": new_user.full_name,
+            "role": new_user.role,
+            "permissions": new_user.get_permissions(),
+        },
+    }
+
+
+# ═══════════════════════════════════════════════════════════
+# ADMIN ROUTES
+# ═══════════════════════════════════════════════════════════
+
+@app.get("/admin/users")
+async def admin_list_users(
+    db: Session = Depends(get_db),
+    current_user: User = require_permission("can_manage_users"),
+):
+    """List all users with their permissions."""
+    users = db.query(User).order_by(desc(User.created_at)).all()
+    return {
+        "success": True,
+        "users": [
+            {
+                "id": u.id,
+                "username": u.username,
+                "email": u.email,
+                "fullName": u.full_name,
+                "role": u.role,
+                "isActive": bool(u.is_active),
+                "permissions": u.get_permissions(),
+                "lastLogin": u.last_login.isoformat() if u.last_login else None,
+                "createdAt": u.created_at.isoformat() if u.created_at else None,
+            }
+            for u in users
+        ],
+    }
+
+
+@app.put("/admin/users/{user_id}")
+async def admin_update_user(
+    user_id: int,
+    user_data: dict,
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: User = require_permission("can_manage_users"),
+):
+    """Update a user's profile, role, active status, or permissions."""
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    # Prevent admin from deactivating themselves
+    if user.id == current_user.id and "is_active" in user_data and not user_data["is_active"]:
+        raise HTTPException(status_code=400, detail="Cannot deactivate your own account")
+
+    if "full_name" in user_data:
+        user.full_name = user_data["full_name"]
+    if "email" in user_data:
+        user.email = user_data["email"]
+    if "role" in user_data:
+        user.role = user_data["role"]
+    if "is_active" in user_data:
+        user.is_active = 1 if user_data["is_active"] else 0
+    if "permissions" in user_data:
+        user.permissions = json.dumps(user_data["permissions"])
+    if "password" in user_data and user_data["password"]:
+        user.hashed_password = hash_password(user_data["password"])
+
+    db.commit()
+    db.refresh(user)
+
+    # Audit
+    client_ip = request.client.host if request.client else None
+    log_audit(db, current_user.id, "UPDATE_USER", resource="users",
+              resource_id=user.id, ip_address=client_ip)
+
+    return {
+        "success": True,
+        "user": {
+            "id": user.id,
+            "username": user.username,
+            "email": user.email,
+            "fullName": user.full_name,
+            "role": user.role,
+            "isActive": bool(user.is_active),
+            "permissions": user.get_permissions(),
+        },
+    }
+
+
+@app.delete("/admin/users/{user_id}")
+async def admin_deactivate_user(
+    user_id: int,
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: User = require_permission("can_manage_users"),
+):
+    """Deactivate a user (soft delete)."""
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    if user.id == current_user.id:
+        raise HTTPException(status_code=400, detail="Cannot deactivate your own account")
+
+    user.is_active = 0
+    db.commit()
+
+    client_ip = request.client.host if request.client else None
+    log_audit(db, current_user.id, "DEACTIVATE_USER", resource="users",
+              resource_id=user.id, ip_address=client_ip)
+
+    return {"success": True, "message": f"User {user.username} deactivated"}
+
+
+@app.get("/admin/stats")
+async def admin_stats(
+    db: Session = Depends(get_db),
+    current_user: User = require_permission("can_access_admin"),
+):
+    """Dashboard overview statistics."""
+    total_users = db.query(User).count()
+    active_users = db.query(User).filter(User.is_active == 1).count()
+    total_patients = db.query(Patient).filter(Patient.status == "active").count()
+    total_analyses = db.query(MedicalReport).filter(MedicalReport.status != "archived").count()
+
+    # Recent logins (last 10)
+    recent_logs = (
+        db.query(AuditLog)
+        .filter(AuditLog.action == "LOGIN")
+        .order_by(desc(AuditLog.created_at))
+        .limit(10)
+        .all()
+    )
+    recent_logins = []
+    for log in recent_logs:
+        u = db.query(User).filter(User.id == log.user_id).first()
+        recent_logins.append({
+            "username": u.username if u else "unknown",
+            "timestamp": log.created_at.isoformat() if log.created_at else None,
+            "ip": log.ip_address,
+        })
+
+    return {
+        "success": True,
+        "stats": {
+            "totalUsers": total_users,
+            "activeUsers": active_users,
+            "totalPatients": total_patients,
+            "totalAnalyses": total_analyses,
+            "recentLogins": recent_logins,
+        },
+    }
+
+
+@app.get("/admin/audit-logs")
+async def admin_audit_logs(
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: User = require_permission("can_view_audit_logs"),
+):
+    """Paginated audit log listing."""
+    query_params = dict(request.query_params)
+    page = int(query_params.get("page", "1"))
+    per_page = int(query_params.get("per_page", "20"))
+    action_filter = query_params.get("action")
+    user_filter = query_params.get("user_id")
+
+    query = db.query(AuditLog)
+    if action_filter:
+        query = query.filter(AuditLog.action == action_filter)
+    if user_filter:
+        query = query.filter(AuditLog.user_id == int(user_filter))
+
+    total = query.count()
+    logs = (
+        query.order_by(desc(AuditLog.created_at))
+        .offset((page - 1) * per_page)
+        .limit(per_page)
+        .all()
+    )
+
+    logs_response = []
+    for log in logs:
+        u = db.query(User).filter(User.id == log.user_id).first()
+        logs_response.append({
+            "id": log.id,
+            "userId": log.user_id,
+            "username": u.username if u else "unknown",
+            "action": log.action,
+            "resource": log.resource,
+            "resourceId": log.resource_id,
+            "details": log.details,
+            "ipAddress": log.ip_address,
+            "createdAt": log.created_at.isoformat() if log.created_at else None,
+        })
+
+    return {
+        "success": True,
+        "total": total,
+        "page": page,
+        "perPage": per_page,
+        "logs": logs_response,
+    }
+
+
+@app.get("/admin/permission-presets")
+async def get_permission_presets(
+    current_user: User = require_permission("can_manage_users"),
+):
+    """Return available permission presets for the Admin UI."""
+    return {
+        "success": True,
+        "presets": {
+            "default": DEFAULT_PERMISSIONS,
+            "doctor": DOCTOR_PRESET_PERMISSIONS,
+            "admin": ALL_PERMISSIONS,
+        },
+    }
+
+
+# ═══════════════════════════════════════════════════════════
+# ADMIN – PATIENT ASSIGNMENT
+# ═══════════════════════════════════════════════════════════
+
+@app.get("/admin/patients")
+async def admin_list_patients(
+    db: Session = Depends(get_db),
+    current_user: User = require_permission("can_access_admin"),
+):
+    """List all patients with their assigned doctor info (admin only)."""
+    patients = db.query(Patient).order_by(desc(Patient.created_at)).all()
+    patients_response = []
+    for p in patients:
+        doctor = None
+        if p.doctor_id:
+            doctor = db.query(User).filter(User.id == p.doctor_id).first()
+        patients_response.append({
+            "id": p.id,
+            "name": p.name,
+            "patient_id": p.patient_id,
+            "status": p.status,
+            "email": p.email,
+            "phone": p.phone,
+            "doctor_id": p.doctor_id,
+            "doctor_username": doctor.username if doctor else None,
+            "doctor_full_name": doctor.full_name if doctor else None,
+            "created_at": p.created_at.isoformat() if p.created_at else None,
+        })
+    return {"success": True, "patients": patients_response}
+
+
+@app.put("/admin/patients/{patient_id}/assign")
+async def admin_assign_patient(
+    patient_id: int,
+    body: dict,
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: User = require_permission("can_manage_users"),
+):
+    """Assign or reassign a patient (and their reports) to a doctor."""
+    patient = db.query(Patient).filter(Patient.id == patient_id).first()
+    if not patient:
+        raise HTTPException(status_code=404, detail="Patient not found")
+
+    new_doctor_id = body.get("doctor_id")  # None means unassign
+    if new_doctor_id is not None:
+        doctor = db.query(User).filter(User.id == new_doctor_id).first()
+        if not doctor:
+            raise HTTPException(status_code=404, detail="Doctor not found")
+
+    old_doctor_id = patient.doctor_id
+    patient.doctor_id = new_doctor_id
+
+    # Also reassign all medical reports for this patient
+    db.query(MedicalReport).filter(
+        MedicalReport.patient_id == patient.id
+    ).update({"doctor_id": new_doctor_id})
+
+    db.commit()
+
+    # Audit
+    client_ip = request.client.host if request.client else None
+    log_audit(
+        db, current_user.id, "ASSIGN_PATIENT",
+        resource="patients", resource_id=patient.id,
+        details={"old_doctor_id": old_doctor_id, "new_doctor_id": new_doctor_id},
+        ip_address=client_ip,
+    )
+
+    return {"success": True, "message": f"Patient {patient.name} assigned to doctor {new_doctor_id}"}
+
 
 if __name__ == "__main__":
     import uvicorn

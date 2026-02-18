@@ -1,21 +1,24 @@
 import { NextResponse } from "next/server"
+import { headers } from "next/headers"
 
 const BACKEND_URL = process.env.BACKEND_URL || "http://localhost:8000"
+
+async function getAuthHeaders() {
+  const h = await headers()
+  const cookie = h.get("cookie") || ""
+  return { "Content-Type": "application/json", cookie }
+}
 
 export async function PUT(request: Request, { params }: { params: Promise<{ patient_id: string }> }) {
   try {
     const { patient_id } = await params
 
-    // Forward to Python backend
     const backendResponse = await fetch(`${BACKEND_URL}/patients/${patient_id}/restore`, {
       method: "PUT",
-      headers: {
-        "Content-Type": "application/json",
-      },
+      headers: await getAuthHeaders(),
     })
 
     if (!backendResponse.ok) {
-      // For restore, 400 might mean patient is already active, which is fine
       if (backendResponse.status === 400) {
         const errorData = await backendResponse.json()
         if (errorData.detail && errorData.detail.includes("already active")) {

@@ -38,7 +38,7 @@ export function AiAnalysisResult() {
     phone: '',
     profilePicture: null as File | null,
     profilePictureUrl: '',
-    doctorName: '',
+
     analysisDate: new Date().toISOString().split('T')[0],
     analysisTime: new Date().toTimeString().split(' ')[0].substring(0, 5)
   })
@@ -55,7 +55,7 @@ export function AiAnalysisResult() {
         phone: '',
         profilePicture: null,
         profilePictureUrl: '',
-        doctorName: '',
+
         analysisDate: new Date().toISOString().split('T')[0],
         analysisTime: new Date().toTimeString().split(' ')[0].substring(0, 5)
       })
@@ -176,7 +176,7 @@ export function AiAnalysisResult() {
         email: patientInfo.email,
         phone: patientInfo.phone,
         profile_picture: profilePictureUrl,
-        doctor_name: patientInfo.doctorName,
+
       }
       let patientId;
       try {
@@ -252,7 +252,7 @@ export function AiAnalysisResult() {
         phone: '',
         profilePicture: null,
         profilePictureUrl: '',
-        doctorName: '',
+
         analysisDate: new Date().toISOString().split('T')[0],
         analysisTime: new Date().toTimeString().split(' ')[0].substring(0, 5)
       })
@@ -396,14 +396,14 @@ export function AiAnalysisResult() {
                   if (analysisType === 'hepatitis' && filterOptions.showHepatitis && (result as any).results.hepatitis) {
                     const hepatitisResult = (result as any).results.hepatitis;
                     const riskLevel = hepatitisResult.risk_level || 'low';
-                    
+
                     // Determine color based on risk level
                     const getHepatitisRiskColor = (level: string) => {
                       if (level === 'critical') return "bg-red-100 text-red-800 border-red-200";
                       if (level === 'high') return "bg-yellow-100 text-yellow-800 border-yellow-200";
                       return "bg-green-100 text-green-800 border-green-200";
                     };
-                    
+
                     const getHepatitisRiskIconColor = (level: string) => {
                       if (level === 'critical') return "text-red-600";
                       if (level === 'high') return "text-yellow-600";
@@ -423,8 +423,8 @@ export function AiAnalysisResult() {
                             <div className="flex items-center gap-3">
                               <div className={`flex h-6 w-6 items-center justify-center rounded-lg ${getHepatitisRiskColor(riskLevel)}`}>
                                 {riskLevel === 'critical' ? <AlertCircle className="h-4 w-4 text-red-600" /> :
-                                 riskLevel === 'high' ? <AlertCircle className="h-4 w-4 text-yellow-600" /> :
-                                 <CheckCircle2 className="h-4 w-4 text-green-600" />}
+                                  riskLevel === 'high' ? <AlertCircle className="h-4 w-4 text-yellow-600" /> :
+                                    <CheckCircle2 className="h-4 w-4 text-green-600" />}
                               </div>
                               <div>
                                 <p className="font-semibold text-sm">Stage {hepatitisResult.stage ?? 0} ({hepatitisResult.stage_description || 'Unknown'})</p>
@@ -599,123 +599,122 @@ export function AiAnalysisResult() {
                 </DialogDescription>
               </DialogHeader>
 
-              <div className="space-y-4 py-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="patient-name">Patient Name *</Label>
-                    <Input
-                      id="patient-name"
-                      value={patientInfo.name}
-                      onChange={(e) => setPatientInfo({ ...patientInfo, name: e.target.value })}
-                      placeholder="Enter patient full name"
-                      required
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="patient-id">Patient ID *</Label>
-                    <Input
-                      id="patient-id"
-                      value={patientInfo.patientId}
-                      onChange={(e) => setPatientInfo({ ...patientInfo, patientId: e.target.value })}
-                      placeholder="P-2024-XXX"
-                      required
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="birth-date">Birth Date</Label>
-                    <Input
-                      id="birth-date"
-                      type="date"
-                      value={patientInfo.birthDate}
-                      onChange={(e) => setPatientInfo({ ...patientInfo, birthDate: e.target.value })}
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="email">Email</Label>
-                    <Input
-                      id="email"
-                      type="email"
-                      value={patientInfo.email}
-                      onChange={(e) => setPatientInfo({ ...patientInfo, email: e.target.value })}
-                      placeholder="patient@example.com"
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="phone">Phone Number</Label>
-                    <Input
-                      id="phone"
-                      type="tel"
-                      value={patientInfo.phone}
-                      onChange={(e) => setPatientInfo({ ...patientInfo, phone: e.target.value })}
-                      placeholder="+1 (555) 123-4567"
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="doctor-name">Doctor Name</Label>
-                    <Input
-                      id="doctor-name"
-                      value={patientInfo.doctorName}
-                      onChange={(e) => setPatientInfo({ ...patientInfo, doctorName: e.target.value })}
-                      placeholder="Attending physician"
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="analysis-date">Analysis Date</Label>
-                    <Input
-                      id="analysis-date"
-                      type="date"
-                      value={patientInfo.analysisDate}
-                      onChange={(e) => setPatientInfo({ ...patientInfo, analysisDate: e.target.value })}
-                    />
-                  </div>
-
-                  <div className="space-y-2 md:col-span-2">
-                    <Label htmlFor="profile-picture">Profile Picture</Label>
-                    <div className="flex items-center gap-4">
+              <form autoComplete="off" onSubmit={(e) => e.preventDefault()}>
+                <div className="space-y-4 py-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="patient-name">Patient Name *</Label>
                       <Input
-                        id="profile-picture"
-                        type="file"
-                        accept="image/*"
-                        onChange={(e) => {
-                          const file = e.target.files?.[0] || null;
-                          if (file) {
-                            // Create preview URL for the selected file
-                            const previewUrl = URL.createObjectURL(file);
-                            setPatientInfo({ ...patientInfo, profilePicture: file, profilePictureUrl: previewUrl });
-                          } else {
-                            setPatientInfo({ ...patientInfo, profilePicture: null });
-                          }
-                        }}
-                        className="flex-1"
+                        id="patient-name"
+                        value={patientInfo.name}
+                        onChange={(e) => setPatientInfo({ ...patientInfo, name: e.target.value })}
+                        placeholder="Enter patient full name"
+                        required
+                        autoComplete="off"
                       />
-                      {patientInfo.profilePictureUrl && (
-                        <img
-                          src={patientInfo.profilePictureUrl}
-                          alt="Profile preview"
-                          className="w-12 h-12 rounded-full object-cover border-2 border-primary"
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="patient-id">Patient ID *</Label>
+                      <Input
+                        id="patient-id"
+                        value={patientInfo.patientId}
+                        onChange={(e) => setPatientInfo({ ...patientInfo, patientId: e.target.value })}
+                        placeholder="P-2024-XXX"
+                        required
+                        autoComplete="off"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="birth-date">Birth Date</Label>
+                      <Input
+                        id="birth-date"
+                        type="date"
+                        value={patientInfo.birthDate}
+                        onChange={(e) => setPatientInfo({ ...patientInfo, birthDate: e.target.value })}
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="email">Email</Label>
+                      <Input
+                        id="email"
+                        type="email"
+                        value={patientInfo.email}
+                        onChange={(e) => setPatientInfo({ ...patientInfo, email: e.target.value })}
+                        placeholder="patient@example.com"
+                        autoComplete="off"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="phone">Phone Number</Label>
+                      <Input
+                        id="phone"
+                        type="tel"
+                        value={patientInfo.phone}
+                        onChange={(e) => setPatientInfo({ ...patientInfo, phone: e.target.value })}
+                        placeholder="+1 (555) 123-4567"
+                        autoComplete="off"
+                      />
+                    </div>
+
+
+
+                    <div className="space-y-2">
+                      <Label htmlFor="analysis-date">Analysis Date</Label>
+                      <Input
+                        id="analysis-date"
+                        type="date"
+                        value={patientInfo.analysisDate}
+                        onChange={(e) => setPatientInfo({ ...patientInfo, analysisDate: e.target.value })}
+                      />
+                    </div>
+
+                    <div className="space-y-2 md:col-span-2">
+                      <Label htmlFor="profile-picture">Profile Picture</Label>
+                      <div className="flex items-center gap-4">
+                        <Input
+                          id="profile-picture"
+                          type="file"
+                          accept="image/*"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0] || null;
+                            if (file) {
+                              // Create preview URL for the selected file
+                              const previewUrl = URL.createObjectURL(file);
+                              setPatientInfo({ ...patientInfo, profilePicture: file, profilePictureUrl: previewUrl });
+                            } else {
+                              setPatientInfo({ ...patientInfo, profilePicture: null });
+                            }
+                          }}
+                          className="flex-1"
                         />
-                      )}
+                        {patientInfo.profilePictureUrl && (
+                          <img
+                            src={patientInfo.profilePictureUrl}
+                            alt="Profile preview"
+                            className="w-12 h-12 rounded-full object-cover border-2 border-primary"
+                          />
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="analysis-time">Analysis Time</Label>
+                      <Input
+                        id="analysis-time"
+                        type="time"
+                        value={patientInfo.analysisTime}
+                        onChange={(e) => setPatientInfo({ ...patientInfo, analysisTime: e.target.value })}
+                      />
                     </div>
                   </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="analysis-time">Analysis Time</Label>
-                    <Input
-                      id="analysis-time"
-                      type="time"
-                      value={patientInfo.analysisTime}
-                      onChange={(e) => setPatientInfo({ ...patientInfo, analysisTime: e.target.value })}
-                    />
-                  </div>
                 </div>
 
-              </div>
+              </form>
 
               <Separator className="my-4" />
 

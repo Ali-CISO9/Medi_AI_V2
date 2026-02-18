@@ -4,7 +4,7 @@ import type React from "react"
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 
-import { Scan, User, ChevronDown, Settings, LogOut } from "lucide-react"
+import { Scan, User, ChevronDown, Settings, LogOut, Shield } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,
@@ -14,16 +14,22 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { useLanguage } from "@/lib/language-context"
+import { useAuth } from "@/lib/auth-context"
 
 export function DashboardLayout({ children }: { children: React.ReactNode }) {
   const [isProfileOpen, setIsProfileOpen] = useState(false)
   const { t } = useLanguage()
   const router = useRouter()
+  const { user, logout, hasPermission } = useAuth()
 
-  const handleLogout = () => {
-    // In a real app, this would clear auth tokens, etc.
-    router.push("/")
+  const handleLogout = async () => {
+    await logout()
   }
+
+  const displayName = user?.fullName || user?.username || "User"
+  const displayRole = user?.role
+    ? user.role.charAt(0).toUpperCase() + user.role.slice(1)
+    : "User"
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-gray-100 to-gray-200 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
@@ -52,18 +58,27 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
                   <User className="h-3 w-3 md:h-4 md:w-4 text-primary-foreground" />
                 </div>
                 <div className="hidden md:flex flex-col items-start">
-                  <span className="text-sm font-medium text-foreground">Dr. Ahmed</span>
-                  <span className="text-xs text-muted-foreground">{t('radiologist')}</span>
+                  <span className="text-sm font-medium text-foreground">{displayName}</span>
+                  <span className="text-xs text-muted-foreground">{displayRole}</span>
                 </div>
                 <ChevronDown className="h-3 w-3 md:h-4 md:w-4 text-muted-foreground" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-56 gradient-card border-border/50">
               <div className="px-2 py-1.5">
-                <p className="text-sm font-medium text-foreground">Dr. Ahmed</p>
-                <p className="text-xs text-muted-foreground">{t('radiologist')}</p>
+                <p className="text-sm font-medium text-foreground">{displayName}</p>
+                <p className="text-xs text-muted-foreground">{displayRole}</p>
               </div>
               <DropdownMenuSeparator />
+              {hasPermission("can_access_admin") && (
+                <DropdownMenuItem
+                  className="cursor-pointer hover-lift"
+                  onClick={() => router.push("/admin")}
+                >
+                  <Shield className="mr-2 h-4 w-4" />
+                  <span>Admin Panel</span>
+                </DropdownMenuItem>
+              )}
               <DropdownMenuItem className="cursor-pointer hover-lift">
                 <Settings className="mr-2 h-4 w-4" />
                 <span>{t('accountSettings')}</span>
@@ -87,3 +102,4 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
     </div>
   )
 }
+

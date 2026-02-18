@@ -1,6 +1,13 @@
 import { NextResponse } from "next/server"
+import { headers } from "next/headers"
 
 const BACKEND_URL = process.env.BACKEND_URL || "http://localhost:8000"
+
+async function getAuthHeaders() {
+  const h = await headers()
+  const cookie = h.get("cookie") || ""
+  return { "Content-Type": "application/json", cookie }
+}
 
 export async function PUT(request: Request, { params }: { params: Promise<{ analysis_id: string }> }) {
   try {
@@ -9,9 +16,7 @@ export async function PUT(request: Request, { params }: { params: Promise<{ anal
 
     const backendResponse = await fetch(`${BACKEND_URL}/patient-analyses/${analysis_id}`, {
       method: "PUT",
-      headers: {
-        "Content-Type": "application/json",
-      },
+      headers: await getAuthHeaders(),
       body: JSON.stringify(body),
     })
 
@@ -33,9 +38,7 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ a
 
     const backendResponse = await fetch(`${BACKEND_URL}/patient-analyses/${analysis_id}`, {
       method: "DELETE",
-      headers: {
-        "Content-Type": "application/json",
-      },
+      headers: await getAuthHeaders(),
     })
 
     if (!backendResponse.ok) {

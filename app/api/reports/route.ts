@@ -1,14 +1,20 @@
 import { NextRequest } from 'next/server';
+import { headers } from "next/headers"
+
+const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:8000';
+
+async function getAuthHeaders() {
+    const h = await headers()
+    const cookie = h.get("cookie") || ""
+    return { "Content-Type": "application/json", cookie }
+}
 
 export async function POST(request: NextRequest) {
     try {
         const body = await request.json();
-        const backendUrl = process.env.BACKEND_URL || 'http://localhost:8000';
-        const response = await fetch(`${backendUrl}/reports`, {
+        const response = await fetch(`${BACKEND_URL}/reports`, {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
+            headers: await getAuthHeaders(),
             body: JSON.stringify(body),
         });
         if (!response.ok) {

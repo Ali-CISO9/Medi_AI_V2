@@ -549,115 +549,115 @@ export function AiRadiologyScan() {
 
   const handleManualSubmit = async () => {
     // Gate screening only
-      // Gate screening validation
-      const gateFields = ['age', 'gender', 'bilirubin', 'bilirubin_direct', 'alp', 'alt', 'ast', 'total_proteins', 'albumin', 'ag_ratio']
-      const missingRequired = gateFields.filter(key => !manualValues[key] || manualValues[key].trim() === '')
+    // Gate screening validation
+    const gateFields = ['age', 'gender', 'bilirubin', 'bilirubin_direct', 'alp', 'alt', 'ast', 'total_proteins', 'albumin', 'ag_ratio']
+    const missingRequired = gateFields.filter(key => !manualValues[key] || manualValues[key].trim() === '')
 
-      if (missingRequired.length > 0) {
-        toast.error("Required Fields Missing", {
-          description: `Please fill in: ${missingRequired.join(', ')}`,
-        })
-        return
+    if (missingRequired.length > 0) {
+      toast.error("Required Fields Missing", {
+        description: `Please fill in: ${missingRequired.join(', ')}`,
+      })
+      return
+    }
+
+    setIsUploading(true)
+
+    try {
+      // Prepare payload with gate parameters using exact backend key names
+      const payload: Record<string, any> = { mode: 'gate' }
+
+      // Map JavaScript variable names to exact backend snake_case keys
+      const keyMapping: Record<string, string> = {
+        'age': 'age',
+        'gender': 'gender',
+        'bilirubin': 'total_bilirubin',
+        'bilirubin_direct': 'direct_bilirubin',
+        'alp': 'alkaline_phosphotase',
+        'alt': 'alamine_aminotransferase',
+        'ast': 'aspartate_aminotransferase',
+        'total_proteins': 'total_protiens', // Note: intentional spelling to match backend
+        'albumin': 'albumin',
+        'ag_ratio': 'albumin_and_globulin_ratio'
       }
 
-      setIsUploading(true)
-
-      try {
-        // Prepare payload with gate parameters using exact backend key names
-        const payload: Record<string, any> = { mode: 'gate' }
-
-        // Map JavaScript variable names to exact backend snake_case keys
-        const keyMapping: Record<string, string> = {
-          'age': 'age',
-          'gender': 'gender',
-          'bilirubin': 'total_bilirubin',
-          'bilirubin_direct': 'direct_bilirubin',
-          'alp': 'alkaline_phosphotase',
-          'alt': 'alamine_aminotransferase',
-          'ast': 'aspartate_aminotransferase',
-          'total_proteins': 'total_protiens', // Note: intentional spelling to match backend
-          'albumin': 'albumin',
-          'ag_ratio': 'albumin_and_globulin_ratio'
-        }
-
-        gateFields.forEach(key => {
-          const backendKey = keyMapping[key] || key
-          if (['age', 'bilirubin', 'bilirubin_direct', 'alp', 'alt', 'ast', 'total_proteins', 'albumin', 'ag_ratio'].includes(key)) {
-            payload[backendKey] = Number(manualValues[key])
-          } else {
-            payload[backendKey] = manualValues[key]
-          }
-        })
-
-        // Set input in context for persistence
-        setInput({
-          ALT: manualValues['alt'] || '',
-          AST: manualValues['ast'] || '',
-          Bilirubin: manualValues['bilirubin'] || '',
-          DirectBilirubin: manualValues['bilirubin_direct'] || '',
-          GGT: manualValues['ggt'] || '',
-          Age: manualValues['age'] || '',
-          Gender: manualValues['gender'] || '',
-          AlkPhos: manualValues['alp'] || '',
-          TP: manualValues['total_proteins'] || '',
-          ALB: manualValues['albumin'] || '',
-          AG: manualValues['ag_ratio'] || ''
-        })
-
-        console.log('Sending gate payload:', payload)
-
-        const response = await fetch("/api/analyze", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(payload),
-        })
-
-        if (!response.ok) {
-          const errorData = await response.json().catch(() => ({ error: `HTTP ${response.status}: ${response.statusText}` }))
-          throw new Error(errorData.error || `Backend error: ${response.status}`)
-        }
-
-        const result = await response.json()
-
-        if (result.success) {
-          setGateResult(result)
-          setGateExpanded(false) // Collapse the form after successful analysis
-          if (result.diagnosis === 'Healthy') {
-            // Healthy - show green card
-            setResult({
-              gate_prediction: 1,
-              diagnosis: result.diagnosis,
-              confidence: result.confidence,
-              advice: result.advice,
-              results: {}
-            })
-            toast.success("General Test Complete", {
-              description: "Patient appears healthy. No further analysis needed.",
-            })
-          } else {
-            // Sick - show detailed analysis tabs
-            setResult({
-              gate_prediction: 0,
-              results: {}
-            })
-            toast.warning("General Test Complete", {
-              description: "Potential risk detected. Detailed analysis available in tabs below.",
-            })
-          }
+      gateFields.forEach(key => {
+        const backendKey = keyMapping[key] || key
+        if (['age', 'bilirubin', 'bilirubin_direct', 'alp', 'alt', 'ast', 'total_proteins', 'albumin', 'ag_ratio'].includes(key)) {
+          payload[backendKey] = Number(manualValues[key])
         } else {
-          throw new Error(result.error || "Analysis failed")
+          payload[backendKey] = manualValues[key]
         }
-      } catch (error) {
-        console.error("Gate analysis error:", error)
-        const errorMessage = error instanceof Error ? error.message : "Failed to analyze patient profile. Please try again."
-        toast.error("Analysis Failed", {
-          description: errorMessage,
-        })
-      } finally {
-        setIsUploading(false)
+      })
+
+      // Set input in context for persistence
+      setInput({
+        ALT: manualValues['alt'] || '',
+        AST: manualValues['ast'] || '',
+        Bilirubin: manualValues['bilirubin'] || '',
+        DirectBilirubin: manualValues['bilirubin_direct'] || '',
+        GGT: manualValues['ggt'] || '',
+        Age: manualValues['age'] || '',
+        Gender: manualValues['gender'] || '',
+        AlkPhos: manualValues['alp'] || '',
+        TP: manualValues['total_proteins'] || '',
+        ALB: manualValues['albumin'] || '',
+        AG: manualValues['ag_ratio'] || ''
+      })
+
+      console.log('Sending gate payload:', payload)
+
+      const response = await fetch("/api/analyze", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: `HTTP ${response.status}: ${response.statusText}` }))
+        throw new Error(errorData.error || `Backend error: ${response.status}`)
       }
+
+      const result = await response.json()
+
+      if (result.success) {
+        setGateResult(result)
+        setGateExpanded(false) // Collapse the form after successful analysis
+        if (result.diagnosis === 'Healthy') {
+          // Healthy - show green card
+          setResult({
+            gate_prediction: 1,
+            diagnosis: result.diagnosis,
+            confidence: result.confidence,
+            advice: result.advice,
+            results: {}
+          })
+          toast.success("General Test Complete", {
+            description: "Patient appears healthy. No further analysis needed.",
+          })
+        } else {
+          // Sick - show detailed analysis tabs
+          setResult({
+            gate_prediction: 0,
+            results: {}
+          })
+          toast.warning("General Test Complete", {
+            description: "Potential risk detected. Detailed analysis available in tabs below.",
+          })
+        }
+      } else {
+        throw new Error(result.error || "Analysis failed")
+      }
+    } catch (error) {
+      console.error("Gate analysis error:", error)
+      const errorMessage = error instanceof Error ? error.message : "Failed to analyze patient profile. Please try again."
+      toast.error("Analysis Failed", {
+        description: errorMessage,
+      })
+    } finally {
+      setIsUploading(false)
+    }
   }
 
 
@@ -836,7 +836,7 @@ export function AiRadiologyScan() {
                             variant="outline"
                             size="sm"
                             onClick={() => {
-                              setEditValues({...manualValues})
+                              setEditValues({ ...manualValues })
                               setIsEditingParameters(true)
                             }}
                             className="text-xs"

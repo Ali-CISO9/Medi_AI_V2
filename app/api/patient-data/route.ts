@@ -1,15 +1,19 @@
 import { NextResponse } from "next/server"
+import { headers } from "next/headers"
 
 const BACKEND_URL = process.env.BACKEND_URL || "http://localhost:8000"
 
+async function getAuthHeaders() {
+  const h = await headers()
+  const cookie = h.get("cookie") || ""
+  return { "Content-Type": "application/json", cookie }
+}
+
 export async function GET() {
   try {
-    // Forward to Python backend
     const backendResponse = await fetch(`${BACKEND_URL}/patient-data`, {
       method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-      },
+      headers: await getAuthHeaders(),
     })
 
     if (!backendResponse.ok) {

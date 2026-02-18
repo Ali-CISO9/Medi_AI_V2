@@ -1,6 +1,13 @@
 import { NextResponse } from "next/server"
+import { headers } from "next/headers"
 
 const BACKEND_URL = process.env.BACKEND_URL || "http://localhost:8000"
+
+async function getAuthHeaders() {
+  const h = await headers()
+  const cookie = h.get("cookie") || ""
+  return { "Content-Type": "application/json", cookie }
+}
 
 export async function GET(request: Request) {
   try {
@@ -8,7 +15,6 @@ export async function GET(request: Request) {
     const includeArchived = searchParams.get('include_archived')
     const patientId = searchParams.get('patient_id')
 
-    // Build query string for backend
     const queryParams = new URLSearchParams()
     if (includeArchived) queryParams.append('include_archived', includeArchived)
     if (patientId) queryParams.append('patient_id', patientId)
@@ -16,12 +22,9 @@ export async function GET(request: Request) {
     const queryString = queryParams.toString()
     const url = `${BACKEND_URL}/patient-analyses${queryString ? `?${queryString}` : ''}`
 
-    // Forward to Python backend
     const backendResponse = await fetch(url, {
       method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-      },
+      headers: await getAuthHeaders(),
     })
 
     if (!backendResponse.ok) {

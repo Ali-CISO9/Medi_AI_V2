@@ -1,4 +1,4 @@
-"use client"
+﻿"use client"
 
 import React, { useState, useRef, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -84,222 +84,222 @@ interface PatientAnalysis {
 }
 
 export function AdvancedReports({ className }: AdvancedReportsProps) {
-    // Use the patient context for shared state management
-    const {
-      patients,
-      patientAnalyses,
-      isLoadingPatients,
-      isLoadingAnalyses,
-      refreshPatients,
-      refreshAnalyses,
-      refreshAllData
-    } = usePatients()
+  // Use the patient context for shared state management
+  const {
+    patients,
+    patientAnalyses,
+    isLoadingPatients,
+    isLoadingAnalyses,
+    refreshPatients,
+    refreshAnalyses,
+    refreshAllData
+  } = usePatients()
 
-    const [dateRange, setDateRange] = useState<{ from: Date | undefined; to: Date | undefined }>({
-      from: new Date(2024, 0, 1),
-      to: new Date(),
-    })
+  const [dateRange, setDateRange] = useState<{ from: Date | undefined; to: Date | undefined }>({
+    from: new Date(2024, 0, 1),
+    to: new Date(),
+  })
 
-    const handleDateRangeChange = (range: any) => {
-      setDateRange(range || { from: undefined, to: undefined })
-    }
-    const [reportType, setReportType] = useState("overview")
-    const [department, setDepartment] = useState("all")
-    const [searchTerm, setSearchTerm] = useState("")
-    const [filteredAnalyses, setFilteredAnalyses] = useState<PatientAnalysis[]>([])
-    const [editingAnalysis, setEditingAnalysis] = useState<PatientAnalysis | null>(null)
-    const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
-    const [selectedAnalysisForReport, setSelectedAnalysisForReport] = useState<PatientAnalysis | null>(null)
-    const [isReportDialogOpen, setIsReportDialogOpen] = useState(false)
-    const [isRefreshing, setIsRefreshing] = useState(false)
-    const [patientLabTests, setPatientLabTests] = useState<any[]>([])
+  const handleDateRangeChange = (range: any) => {
+    setDateRange(range || { from: undefined, to: undefined })
+  }
+  const [reportType, setReportType] = useState("overview")
+  const [department, setDepartment] = useState("all")
+  const [searchTerm, setSearchTerm] = useState("")
+  const [filteredAnalyses, setFilteredAnalyses] = useState<PatientAnalysis[]>([])
+  const [editingAnalysis, setEditingAnalysis] = useState<PatientAnalysis | null>(null)
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
+  const [selectedAnalysisForReport, setSelectedAnalysisForReport] = useState<PatientAnalysis | null>(null)
+  const [isReportDialogOpen, setIsReportDialogOpen] = useState(false)
+  const [isRefreshing, setIsRefreshing] = useState(false)
+  const [patientLabTests, setPatientLabTests] = useState<any[]>([])
 
-   // Overview tab state
-   const [overviewMetrics, setOverviewMetrics] = useState({
-     totalPatients: 0,
-     totalAnalyses: 0,
-     reportsGenerated: 0,
-     successRate: 0,
-     avgResponseTime: 0,
-     systemUptime: 0
-   })
-   const [alerts, setAlerts] = useState<Array<{
-     id: string
-     type: 'critical' | 'warning' | 'info'
-     message: string
-     timestamp: Date
-   }>>([])
-   const [recentActivities, setRecentActivities] = useState<Array<{
-     id: string
-     type: string
-     description: string
-     timestamp: Date
-   }>>([])
-   const [isLoadingOverview, setIsLoadingOverview] = useState(false)
+  // Overview tab state
+  const [overviewMetrics, setOverviewMetrics] = useState({
+    totalPatients: 0,
+    totalAnalyses: 0,
+    reportsGenerated: 0,
+    successRate: 0,
+    avgResponseTime: 0,
+    systemUptime: 0
+  })
+  const [alerts, setAlerts] = useState<Array<{
+    id: string
+    type: 'critical' | 'warning' | 'info'
+    message: string
+    timestamp: Date
+  }>>([])
+  const [recentActivities, setRecentActivities] = useState<Array<{
+    id: string
+    type: string
+    description: string
+    timestamp: Date
+  }>>([])
+  const [isLoadingOverview, setIsLoadingOverview] = useState(false)
 
-   // Calculator state
-   const [bmiInputs, setBmiInputs] = useState({ weight: '', height: '' })
-   const [bmiResult, setBmiResult] = useState({ bmi: null as string | null, category: '' })
+  // Calculator state
+  const [bmiInputs, setBmiInputs] = useState({ weight: '', height: '' })
+  const [bmiResult, setBmiResult] = useState({ bmi: null as string | null, category: '' })
 
-   const [gfrInputs, setGfrInputs] = useState({
-     creatinine: '',
-     age: '',
-     gender: '',
-     race: ''
-   })
-   const [gfrResult, setGfrResult] = useState({ egfr: null as string | null, stage: '' })
+  const [gfrInputs, setGfrInputs] = useState({
+    creatinine: '',
+    age: '',
+    gender: '',
+    race: ''
+  })
+  const [gfrResult, setGfrResult] = useState({ egfr: null as string | null, stage: '' })
 
-   const [fluidInputs, setFluidInputs] = useState({ weight: '', type: 'maintenance' })
-   const [fluidResult, setFluidResult] = useState({ daily: null as string | null, hourly: null as string | null })
+  const [fluidInputs, setFluidInputs] = useState({ weight: '', type: 'maintenance' })
+  const [fluidResult, setFluidResult] = useState({ daily: null as string | null, hourly: null as string | null })
 
-   const [doseInputs, setDoseInputs] = useState({
-     desiredDose: '',
-     concentration: '',
-     volume: ''
-   })
-   const [doseResult, setDoseResult] = useState({ totalDose: null as string | null, concentration: null as string | null })
+  const [doseInputs, setDoseInputs] = useState({
+    desiredDose: '',
+    concentration: '',
+    volume: ''
+  })
+  const [doseResult, setDoseResult] = useState({ totalDose: null as string | null, concentration: null as string | null })
 
-   // Unit converter state
-   const [converterInputs, setConverterInputs] = useState({
-     value: '',
-     fromUnit: '',
-     toUnit: ''
-   })
-   const [converterResult, setConverterResult] = useState(null as string | null)
+  // Unit converter state
+  const [converterInputs, setConverterInputs] = useState({
+    value: '',
+    fromUnit: '',
+    toUnit: ''
+  })
+  const [converterResult, setConverterResult] = useState(null as string | null)
 
-   // Medical references state
-   const [selectedReference, setSelectedReference] = useState<string | null>(null)
-   const [isReferenceModalOpen, setIsReferenceModalOpen] = useState(false)
+  // Medical references state
+  const [selectedReference, setSelectedReference] = useState<string | null>(null)
+  const [isReferenceModalOpen, setIsReferenceModalOpen] = useState(false)
 
-   // AI Analysis tab state
-   const [aiInsights, setAiInsights] = useState({
-     predictiveRisks: [] as Array<{ patient: string; riskLevel: 'low' | 'medium' | 'high'; probability: number; factors: string[] }>,
-     anomalyDetections: [] as Array<{ type: string; severity: 'low' | 'medium' | 'high'; description: string; timestamp: Date }>,
-     treatmentEfficacy: [] as Array<{ treatment: string; successRate: number; patientCount: number; avgImprovement: number }>
-   })
-   const [aiFilters, setAiFilters] = useState({
-     demographic: 'all',
-     timeRange: '30d',
-     modelType: 'all',
-     riskLevel: 'all'
-   })
-   const [selectedInsight, setSelectedInsight] = useState<any>(null)
-   const [isInsightModalOpen, setIsInsightModalOpen] = useState(false)
-   const [aiSummary, setAiSummary] = useState({
-     totalPredictions: 0,
-     highRiskAlerts: 0,
-     anomalyCount: 0,
-     avgConfidence: 0
-   })
+  // AI Analysis tab state
+  const [aiInsights, setAiInsights] = useState({
+    predictiveRisks: [] as Array<{ patient: string; riskLevel: 'low' | 'medium' | 'high'; probability: number; factors: string[] }>,
+    anomalyDetections: [] as Array<{ type: string; severity: 'low' | 'medium' | 'high'; description: string; timestamp: Date }>,
+    treatmentEfficacy: [] as Array<{ treatment: string; successRate: number; patientCount: number; avgImprovement: number }>
+  })
+  const [aiFilters, setAiFilters] = useState({
+    demographic: 'all',
+    timeRange: '30d',
+    modelType: 'all',
+    riskLevel: 'all'
+  })
+  const [selectedInsight, setSelectedInsight] = useState<any>(null)
+  const [isInsightModalOpen, setIsInsightModalOpen] = useState(false)
+  const [aiSummary, setAiSummary] = useState({
+    totalPredictions: 0,
+    highRiskAlerts: 0,
+    anomalyCount: 0,
+    avgConfidence: 0
+  })
 
-   // Cases Monitoring state
-   const [pendingTasks, setPendingTasks] = useState<Array<{
-     id: string
-     title: string
-     description: string
-     priority: 'high' | 'medium' | 'low'
-     dueDate: Date
-     patientId?: string
-     patientName?: string
-     completed: boolean
-     createdAt: Date
-   }>>([])
-   const [upcomingAppointments, setUpcomingAppointments] = useState<Array<{
-     id: string
-     patientName: string
-     patientId: string
-     dateTime: Date
-     type: string
-     duration: number
-     location?: string
-     notes?: string
-     status: 'scheduled' | 'confirmed' | 'cancelled'
-   }>>([])
-   const [activeCases, setActiveCases] = useState<Array<{
-     id: string
-     patientName: string
-     patientId: string
-     diagnosis: string
-     status: 'active' | 'critical' | 'recovery' | 'pending_review' | 'finished'
-     lastUpdate: Date
-     treatmentProgress: number
-     nextAppointment?: Date
-     assignedDoctor: string
-     alerts: string[]
-     profilePicture?: string
-     doctor_name?: string
-     notes?: string
-   }>>([])
-   const [casesFilter, setCasesFilter] = useState('all')
-   const [newTask, setNewTask] = useState({
-     title: '',
-     description: '',
-     priority: 'medium' as 'high' | 'medium' | 'low',
-     dueDate: '',
-     patientId: '',
-     patientName: ''
-   })
-   const [isTaskDialogOpen, setIsTaskDialogOpen] = useState(false)
-   const [editingTask, setEditingTask] = useState<any>(null)
-   const [isEditTaskDialogOpen, setIsEditTaskDialogOpen] = useState(false)
+  // Cases Monitoring state
+  const [pendingTasks, setPendingTasks] = useState<Array<{
+    id: string
+    title: string
+    description: string
+    priority: 'high' | 'medium' | 'low'
+    dueDate: Date
+    patientId?: string
+    patientName?: string
+    completed: boolean
+    createdAt: Date
+  }>>([])
+  const [upcomingAppointments, setUpcomingAppointments] = useState<Array<{
+    id: string
+    patientName: string
+    patientId: string
+    dateTime: Date
+    type: string
+    duration: number
+    location?: string
+    notes?: string
+    status: 'scheduled' | 'confirmed' | 'cancelled'
+  }>>([])
+  const [activeCases, setActiveCases] = useState<Array<{
+    id: string
+    patientName: string
+    patientId: string
+    diagnosis: string
+    status: 'active' | 'critical' | 'recovery' | 'pending_review' | 'finished'
+    lastUpdate: Date
+    treatmentProgress: number
+    nextAppointment?: Date
+    assignedDoctor: string
+    alerts: string[]
+    profilePicture?: string
+    doctor_name?: string
+    notes?: string
+  }>>([])
+  const [casesFilter, setCasesFilter] = useState('all')
+  const [newTask, setNewTask] = useState({
+    title: '',
+    description: '',
+    priority: 'medium' as 'high' | 'medium' | 'low',
+    dueDate: '',
+    patientId: '',
+    patientName: ''
+  })
+  const [isTaskDialogOpen, setIsTaskDialogOpen] = useState(false)
+  const [editingTask, setEditingTask] = useState<any>(null)
+  const [isEditTaskDialogOpen, setIsEditTaskDialogOpen] = useState(false)
 
-   // Active Cases state
-   const [selectedCase, setSelectedCase] = useState<any>(null)
-   const [isCaseDetailsDialogOpen, setIsCaseDetailsDialogOpen] = useState(false)
-   const [isUpdateProgressDialogOpen, setIsUpdateProgressDialogOpen] = useState(false)
-   const [progressUpdate, setProgressUpdate] = useState({
-     caseId: '',
-     progress: 0,
-     status: 'active' as 'active' | 'critical' | 'recovery' | 'pending_review' | 'finished',
-     doctor: '',
-     notes: ''
-   })
+  // Active Cases state
+  const [selectedCase, setSelectedCase] = useState<any>(null)
+  const [isCaseDetailsDialogOpen, setIsCaseDetailsDialogOpen] = useState(false)
+  const [isUpdateProgressDialogOpen, setIsUpdateProgressDialogOpen] = useState(false)
+  const [progressUpdate, setProgressUpdate] = useState({
+    caseId: '',
+    progress: 0,
+    status: 'active' as 'active' | 'critical' | 'recovery' | 'pending_review' | 'finished',
+    doctor: '',
+    notes: ''
+  })
 
-   // Appointments state
-   const [appointmentSearchTerm, setAppointmentSearchTerm] = useState("")
-   const [filteredAppointments, setFilteredAppointments] = useState(upcomingAppointments)
-   const [isAppointmentDialogOpen, setIsAppointmentDialogOpen] = useState(false)
-   const [newAppointment, setNewAppointment] = useState({
-     patientId: "",
-     patientName: "",
-     dateTime: "",
-     type: "",
-     duration: 30,
-     location: "",
-     notes: ""
-   })
+  // Appointments state
+  const [appointmentSearchTerm, setAppointmentSearchTerm] = useState("")
+  const [filteredAppointments, setFilteredAppointments] = useState(upcomingAppointments)
+  const [isAppointmentDialogOpen, setIsAppointmentDialogOpen] = useState(false)
+  const [newAppointment, setNewAppointment] = useState({
+    patientId: "",
+    patientName: "",
+    dateTime: "",
+    type: "",
+    duration: 30,
+    location: "",
+    notes: ""
+  })
 
-   // Reschedule dialog state
-   const [isRescheduleDialogOpen, setIsRescheduleDialogOpen] = useState(false)
-   const [rescheduleAppointmentData, setRescheduleAppointmentData] = useState<{
-     id: string
-     patientName: string
-     patientId: string
-     dateTime: string
-     type: string
-     duration: number
-     location: string
-     notes: string
-     status: 'scheduled' | 'confirmed' | 'cancelled'
-   } | null>(null)
+  // Reschedule dialog state
+  const [isRescheduleDialogOpen, setIsRescheduleDialogOpen] = useState(false)
+  const [rescheduleAppointmentData, setRescheduleAppointmentData] = useState<{
+    id: string
+    patientName: string
+    patientId: string
+    dateTime: string
+    type: string
+    duration: number
+    location: string
+    notes: string
+    status: 'scheduled' | 'confirmed' | 'cancelled'
+  } | null>(null)
 
-   const [editForm, setEditForm] = useState({
-     name: '',
-     patientId: '',
-     birthDate: '',
-     email: '',
-     phone: '',
-     profilePicture: null as File | null,
-     profilePictureUrl: '',
-     analysisDate: new Date().toISOString().split('T')[0],
-     analysisTime: new Date().toTimeString().split(' ')[0].substring(0, 5),
-     diagnosis: '',
-     confidence: 0,
-     advice: ''
-   })
+  const [editForm, setEditForm] = useState({
+    name: '',
+    patientId: '',
+    birthDate: '',
+    email: '',
+    phone: '',
+    profilePicture: null as File | null,
+    profilePictureUrl: '',
+    analysisDate: new Date().toISOString().split('T')[0],
+    analysisTime: new Date().toTimeString().split(' ')[0].substring(0, 5),
+    diagnosis: '',
+    confidence: 0,
+    advice: ''
+  })
 
-   // Analysis detail modal state
-   const [selectedDetail, setSelectedDetail] = useState<{ type: 'cancer' | 'hepatitis' | 'fatty_liver' | 'general', data: any } | null>(null)
+  // Analysis detail modal state
+  const [selectedDetail, setSelectedDetail] = useState<{ type: 'cancer' | 'hepatitis' | 'fatty_liver' | 'general', data: any } | null>(null)
 
   // Function to expand medical abbreviations
   const expandDiagnosis = (diagnosis: string) => {
@@ -323,8 +323,8 @@ export function AdvancedReports({ className }: AdvancedReportsProps) {
             )}
             <Badge variant="outline" className={
               analysis.confidence >= 80 ? "bg-green-100 text-green-800 border-green-200 text-xs" :
-              analysis.confidence >= 60 ? "bg-yellow-100 text-yellow-800 border-yellow-200 text-xs" :
-              "bg-red-100 text-red-800 border-red-200 text-xs"
+                analysis.confidence >= 60 ? "bg-yellow-100 text-yellow-800 border-yellow-200 text-xs" :
+                  "bg-red-100 text-red-800 border-red-200 text-xs"
             }>
               {analysis.confidence}% confidence
             </Badge>
@@ -357,9 +357,9 @@ export function AdvancedReports({ className }: AdvancedReportsProps) {
               variant="outline"
               className={
                 key === 'cancer' ? "bg-red-100 text-red-800 border-red-200 text-xs cursor-pointer hover:opacity-80" :
-                key === 'hepatitis' ? "bg-blue-100 text-blue-800 border-blue-200 text-xs cursor-pointer hover:opacity-80" :
-                key === 'fatty_liver' ? "bg-green-100 text-green-800 border-green-200 text-xs cursor-pointer hover:opacity-80" :
-                "bg-gray-100 text-gray-800 border-gray-200 text-xs cursor-pointer hover:opacity-80"
+                  key === 'hepatitis' ? "bg-blue-100 text-blue-800 border-blue-200 text-xs cursor-pointer hover:opacity-80" :
+                    key === 'fatty_liver' ? "bg-green-100 text-green-800 border-green-200 text-xs cursor-pointer hover:opacity-80" :
+                      "bg-gray-100 text-gray-800 border-gray-200 text-xs cursor-pointer hover:opacity-80"
               }
               onClick={() => setSelectedDetail({ type: key as 'cancer' | 'hepatitis' | 'fatty_liver', data: details[key] })}
             >
@@ -628,131 +628,131 @@ export function AdvancedReports({ className }: AdvancedReportsProps) {
     }
   }, [patientAnalyses, patients])
 
-   // Initialize pending tasks and appointments with localStorage persistence
-   useEffect(() => {
-     // Check for saved pending tasks
-     const savedTasks = localStorage.getItem('pendingTasks')
-     if (savedTasks) {
-       try {
-         const parsedTasks = JSON.parse(savedTasks)
-         const tasksWithDates = parsedTasks.map((task: any) => ({
-           ...task,
-           dueDate: new Date(task.dueDate),
-           createdAt: new Date(task.createdAt)
-         }))
-         setPendingTasks(tasksWithDates)
-       } catch (error) {
-         console.error('Error parsing saved tasks:', error)
-       }
-     } else {
-       // Sample pending tasks (only if no saved data)
-       const sampleTasks = [
-         {
-           id: '1',
-           title: 'Review lab results for Patient #1234',
-           description: 'Check latest blood work and update treatment plan',
-           priority: 'high' as const,
-           dueDate: new Date(Date.now() + 2 * 60 * 60 * 1000), // 2 hours from now
-           patientId: 'P-2024-001',
-           patientName: 'Ahmed Al-Rashid',
-           completed: false,
-           createdAt: new Date(Date.now() - 4 * 60 * 60 * 1000)
-         },
-         {
-           id: '2',
-           title: 'Schedule follow-up MRI',
-           description: 'Patient needs MRI scan for treatment evaluation',
-           priority: 'medium' as const,
-           dueDate: new Date(Date.now() + 24 * 60 * 60 * 1000), // Tomorrow
-           patientId: 'P-2024-002',
-           patientName: 'Fatima Al-Zahra',
-           completed: false,
-           createdAt: new Date(Date.now() - 2 * 60 * 60 * 1000)
-         },
-         {
-           id: '3',
-           title: 'Update medication dosage',
-           description: 'Adjust insulin dosage based on recent glucose readings',
-           priority: 'high' as const,
-           dueDate: new Date(Date.now() + 6 * 60 * 60 * 1000), // 6 hours from now
-           patientId: 'P-2024-003',
-           patientName: 'Omar Hassan',
-           completed: false,
-           createdAt: new Date(Date.now() - 6 * 60 * 60 * 1000)
-         }
-       ]
-       setPendingTasks(sampleTasks)
-       localStorage.setItem('pendingTasks', JSON.stringify(sampleTasks))
-     }
+  // Initialize pending tasks and appointments with localStorage persistence
+  useEffect(() => {
+    // Check for saved pending tasks
+    const savedTasks = localStorage.getItem('pendingTasks')
+    if (savedTasks) {
+      try {
+        const parsedTasks = JSON.parse(savedTasks)
+        const tasksWithDates = parsedTasks.map((task: any) => ({
+          ...task,
+          dueDate: new Date(task.dueDate),
+          createdAt: new Date(task.createdAt)
+        }))
+        setPendingTasks(tasksWithDates)
+      } catch (error) {
+        console.error('Error parsing saved tasks:', error)
+      }
+    } else {
+      // Sample pending tasks (only if no saved data)
+      const sampleTasks = [
+        {
+          id: '1',
+          title: 'Review lab results for Patient #1234',
+          description: 'Check latest blood work and update treatment plan',
+          priority: 'high' as const,
+          dueDate: new Date(Date.now() + 2 * 60 * 60 * 1000), // 2 hours from now
+          patientId: 'P-2024-001',
+          patientName: 'Ahmed Al-Rashid',
+          completed: false,
+          createdAt: new Date(Date.now() - 4 * 60 * 60 * 1000)
+        },
+        {
+          id: '2',
+          title: 'Schedule follow-up MRI',
+          description: 'Patient needs MRI scan for treatment evaluation',
+          priority: 'medium' as const,
+          dueDate: new Date(Date.now() + 24 * 60 * 60 * 1000), // Tomorrow
+          patientId: 'P-2024-002',
+          patientName: 'Fatima Al-Zahra',
+          completed: false,
+          createdAt: new Date(Date.now() - 2 * 60 * 60 * 1000)
+        },
+        {
+          id: '3',
+          title: 'Update medication dosage',
+          description: 'Adjust insulin dosage based on recent glucose readings',
+          priority: 'high' as const,
+          dueDate: new Date(Date.now() + 6 * 60 * 60 * 1000), // 6 hours from now
+          patientId: 'P-2024-003',
+          patientName: 'Omar Hassan',
+          completed: false,
+          createdAt: new Date(Date.now() - 6 * 60 * 60 * 1000)
+        }
+      ]
+      setPendingTasks(sampleTasks)
+      localStorage.setItem('pendingTasks', JSON.stringify(sampleTasks))
+    }
 
-     // Check for saved appointments
-     const savedAppointments = localStorage.getItem('upcomingAppointments')
-     if (savedAppointments) {
-       try {
-         const parsedAppointments = JSON.parse(savedAppointments)
-         const appointmentsWithDates = parsedAppointments.map((apt: any) => ({
-           ...apt,
-           dateTime: new Date(apt.dateTime)
-         }))
-         setUpcomingAppointments(appointmentsWithDates)
-       } catch (error) {
-         console.error('Error parsing saved appointments:', error)
-       }
-     } else {
-       // Sample upcoming appointments (only if no saved data)
-       const sampleAppointments = [
-         {
-           id: '1',
-           patientName: 'Ahmed Al-Rashid',
-           patientId: 'P-2024-001',
-           dateTime: new Date(Date.now() + 3 * 60 * 60 * 1000), // 3 hours from now
-           type: 'Cardiology Consultation',
-           duration: 30,
-           location: 'Room 203',
-           notes: 'Post-surgery follow-up',
-           status: 'scheduled' as const
-         },
-         {
-           id: '2',
-           patientName: 'Fatima Al-Zahra',
-           patientId: 'P-2024-002',
-           dateTime: new Date(Date.now() + 6 * 60 * 60 * 1000), // 6 hours from now
-           type: 'Oncology Treatment',
-           duration: 90,
-           location: 'Chemo Suite A',
-           notes: 'Cycle 3 of chemotherapy',
-           status: 'confirmed' as const
-         },
-         {
-           id: '3',
-           patientName: 'Omar Hassan',
-           patientId: 'P-2024-003',
-           dateTime: new Date(Date.now() + 24 * 60 * 60 * 1000), // Tomorrow
-           type: 'Endocrinology Review',
-           duration: 45,
-           location: 'Room 105',
-           notes: 'Diabetes management check',
-           status: 'scheduled' as const
-         }
-       ]
-       setUpcomingAppointments(sampleAppointments)
-       localStorage.setItem('upcomingAppointments', JSON.stringify(sampleAppointments))
-     }
-   }, [])
+    // Check for saved appointments
+    const savedAppointments = localStorage.getItem('upcomingAppointments')
+    if (savedAppointments) {
+      try {
+        const parsedAppointments = JSON.parse(savedAppointments)
+        const appointmentsWithDates = parsedAppointments.map((apt: any) => ({
+          ...apt,
+          dateTime: new Date(apt.dateTime)
+        }))
+        setUpcomingAppointments(appointmentsWithDates)
+      } catch (error) {
+        console.error('Error parsing saved appointments:', error)
+      }
+    } else {
+      // Sample upcoming appointments (only if no saved data)
+      const sampleAppointments = [
+        {
+          id: '1',
+          patientName: 'Ahmed Al-Rashid',
+          patientId: 'P-2024-001',
+          dateTime: new Date(Date.now() + 3 * 60 * 60 * 1000), // 3 hours from now
+          type: 'Cardiology Consultation',
+          duration: 30,
+          location: 'Room 203',
+          notes: 'Post-surgery follow-up',
+          status: 'scheduled' as const
+        },
+        {
+          id: '2',
+          patientName: 'Fatima Al-Zahra',
+          patientId: 'P-2024-002',
+          dateTime: new Date(Date.now() + 6 * 60 * 60 * 1000), // 6 hours from now
+          type: 'Oncology Treatment',
+          duration: 90,
+          location: 'Chemo Suite A',
+          notes: 'Cycle 3 of chemotherapy',
+          status: 'confirmed' as const
+        },
+        {
+          id: '3',
+          patientName: 'Omar Hassan',
+          patientId: 'P-2024-003',
+          dateTime: new Date(Date.now() + 24 * 60 * 60 * 1000), // Tomorrow
+          type: 'Endocrinology Review',
+          duration: 45,
+          location: 'Room 105',
+          notes: 'Diabetes management check',
+          status: 'scheduled' as const
+        }
+      ]
+      setUpcomingAppointments(sampleAppointments)
+      localStorage.setItem('upcomingAppointments', JSON.stringify(sampleAppointments))
+    }
+  }, [])
 
-   // Save active cases to localStorage whenever they change
-   useEffect(() => {
-     if (activeCases.length > 0) {
-       localStorage.setItem('activeCases', JSON.stringify(activeCases))
-     }
-   }, [activeCases])
+  // Save active cases to localStorage whenever they change
+  useEffect(() => {
+    if (activeCases.length > 0) {
+      localStorage.setItem('activeCases', JSON.stringify(activeCases))
+    }
+  }, [activeCases])
 
-   // Save appointments to localStorage whenever they change
-   useEffect(() => {
-     if (upcomingAppointments.length > 0) {
-       localStorage.setItem('upcomingAppointments', JSON.stringify(upcomingAppointments))
-     }
-   }, [upcomingAppointments])
+  // Save appointments to localStorage whenever they change
+  useEffect(() => {
+    if (upcomingAppointments.length > 0) {
+      localStorage.setItem('upcomingAppointments', JSON.stringify(upcomingAppointments))
+    }
+  }, [upcomingAppointments])
 
   // Task management functions
   const addTask = () => {
@@ -896,13 +896,13 @@ export function AdvancedReports({ className }: AdvancedReportsProps) {
       const newStatus = progressUpdate.progress === 100 ? 'finished' : progressUpdate.status;
       return case_.id === progressUpdate.caseId
         ? {
-            ...case_,
-            treatmentProgress: progressUpdate.progress,
-            status: newStatus,
-            assignedDoctor: progressUpdate.doctor,
-            notes: progressUpdate.notes, // Will save empty string or the notes text
-            lastUpdate: new Date()
-          }
+          ...case_,
+          treatmentProgress: progressUpdate.progress,
+          status: newStatus,
+          assignedDoctor: progressUpdate.doctor,
+          notes: progressUpdate.notes, // Will save empty string or the notes text
+          lastUpdate: new Date()
+        }
         : case_
     }))
 
@@ -959,14 +959,14 @@ export function AdvancedReports({ className }: AdvancedReportsProps) {
     setUpcomingAppointments(prev => prev.map(apt =>
       apt.id === rescheduleAppointmentData.id
         ? {
-            ...apt,
-            dateTime: new Date(rescheduleAppointmentData.dateTime),
-            type: rescheduleAppointmentData.type,
-            duration: rescheduleAppointmentData.duration,
-            location: rescheduleAppointmentData.location || undefined,
-            notes: rescheduleAppointmentData.notes || undefined,
-            status: rescheduleAppointmentData.status
-          }
+          ...apt,
+          dateTime: new Date(rescheduleAppointmentData.dateTime),
+          type: rescheduleAppointmentData.type,
+          duration: rescheduleAppointmentData.duration,
+          location: rescheduleAppointmentData.location || undefined,
+          notes: rescheduleAppointmentData.notes || undefined,
+          status: rescheduleAppointmentData.status
+        }
         : apt
     ))
 
@@ -1069,7 +1069,7 @@ export function AdvancedReports({ className }: AdvancedReportsProps) {
   const handleViewReport = async (analysis: PatientAnalysis) => {
     setSelectedAnalysisForReport(analysis)
     setIsReportDialogOpen(true)
-    
+
     // Fetch lab tests for this patient
     try {
       const response = await fetch(`/api/lab-tests?patientId=${analysis.patient_id_display}`)
@@ -1245,53 +1245,339 @@ export function AdvancedReports({ className }: AdvancedReportsProps) {
     }
   }
 
+  // â”€â”€â”€ Helper: build print-ready HTML string for a patient report â”€â”€â”€
+  const buildReportHTML = (analysis: PatientAnalysis, labTests: any[]) => {
+    const age = analysis.birth_date
+      ? Math.floor((Date.now() - new Date(analysis.birth_date).getTime()) / (365.25 * 24 * 60 * 60 * 1000))
+      : null
+
+    const detailedResults = analysis.detailed_results ? JSON.parse(analysis.detailed_results) : null
+
+    // Lab test rows
+    const labRows = labTests.length > 0
+      ? labTests.map((t: any) => `
+          <tr>
+            <td>${t.testName || t.test_name || '—'}</td>
+            <td class="text-center">${t.value ?? '—'}</td>
+            <td class="text-center">${t.unit || '—'}</td>
+            <td class="text-center">${t.normalRange || t.normal_range || '—'}</td>
+            <td class="text-center">
+              <span class="badge ${t.status === 'high' || t.status === 'critical' ? 'badge-red' : t.status === 'low' ? 'badge-yellow' : 'badge-green'}">
+                ${(t.status || 'normal').toUpperCase()}
+              </span>
+            </td>
+          </tr>`).join('')
+      : '<tr><td colspan="5" class="empty-state">No laboratory test parameters recorded for this analysis.</td></tr>'
+
+    // Detailed analysis sections: Ordered as Hepatitis -> Cancer -> Fatty Liver
+    let detailedHTML = ''
+    if (detailedResults) {
+      if (detailedResults.hepatitis) {
+        detailedHTML += `
+          <div class="card info-card diagnosis-card">
+            <div class="card-header info-header">
+              <h3>Hepatitis Analysis</h3>
+            </div>
+            <div class="card-body">
+              <div style="flex: 1;">
+                <table class="details-table">
+                  <tr>
+                    <td><strong>Stage:</strong> ${detailedResults.hepatitis.stage || 'N/A'}</td>
+                    <td><strong>Risk Level:</strong> ${detailedResults.hepatitis.risk_level || 'N/A'}</td>
+                  </tr>
+                  <tr>
+                    <td><strong>Mortality Risk:</strong> ${detailedResults.hepatitis.mortality_risk?.toFixed(1) || 'N/A'}%</td>
+                    <td><strong>Complications:</strong> ${detailedResults.hepatitis.complications_risk?.toFixed(1) || 'N/A'}%</td>
+                  </tr>
+                </table>
+              </div>
+              ${detailedResults.hepatitis.advice ? `<p class="advice-text"><strong>Guidance:</strong> ${detailedResults.hepatitis.advice}</p>` : ''}
+            </div>
+          </div>`
+      }
+      if (detailedResults.cancer) {
+        detailedHTML += `
+          <div class="card danger-card diagnosis-card">
+            <div class="card-header danger-header">
+              <h3>Cancer Risk Assessment</h3>
+            </div>
+            <div class="card-body">
+              <div style="flex: 1;">
+                <table class="details-table">
+                  <tr>
+                    <td><strong>Risk Level:</strong> ${detailedResults.cancer.risk_level || 'N/A'}</td>
+                    <td><strong>Risk Percentage:</strong> ${detailedResults.cancer.risk_percentage?.toFixed(1) || 'N/A'}%</td>
+                  </tr>
+                </table>
+              </div>
+              ${detailedResults.cancer.advice ? `<p class="advice-text"><strong>Guidance:</strong> ${detailedResults.cancer.advice}</p>` : ''}
+            </div>
+          </div>`
+      }
+      if (detailedResults.fatty_liver) {
+        detailedHTML += `
+          <div class="card success-card diagnosis-card">
+            <div class="card-header success-header">
+              <h3>Fatty Liver Analysis</h3>
+            </div>
+            <div class="card-body">
+              <div style="flex: 1;">
+                <table class="details-table">
+                  <tr>
+                    <td><strong>Diagnosis:</strong> ${detailedResults.fatty_liver.diagnosis || 'N/A'}</td>
+                    <td><strong>Sick Probability:</strong> ${detailedResults.fatty_liver.sick_probability?.toFixed(1) || 'N/A'}%</td>
+                  </tr>
+                  <tr>
+                    <td colspan="2"><strong>Has Fatty Liver:</strong> ${detailedResults.fatty_liver.has_fatty_liver ? 'Yes' : 'No'}</td>
+                  </tr>
+                </table>
+              </div>
+              ${detailedResults.fatty_liver.advice ? `<p class="advice-text"><strong>Guidance:</strong> ${detailedResults.fatty_liver.advice}</p>` : ''}
+            </div>
+          </div>`
+      }
+    }
+
+    return `<!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <title>Medical Report - ${analysis.patient_name}</title>
+      <style>
+        @page { size: A4; margin-top: 5mm; margin-bottom: 0mm; margin-left: 5mm; margin-right: 5mm; }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; color: #1f2937; font-size: 12px; line-height: 1.6; background: #fff; transform: scale(0.98); transform-origin: top center; height: auto; overflow: hidden; }
+        
+        /* Layout */
+        .container { width: 100%; max-width: 800px; margin: 0 auto; padding: 15px; }
+        
+        /* Header */
+        .header { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 3px solid #059669; padding-bottom: 15px; margin-bottom: 40px; }
+        .header-title h1 { font-size: 24px; color: #065f46; margin: 0; text-transform: uppercase; letter-spacing: 1px; }
+        .header-title p { font-size: 14px; color: #6b7280; margin-top: 4px; }
+        .report-meta { text-align: right; font-size: 11px; color: #6b7280; }
+        .report-meta p { margin-bottom: 2px; }
+        
+        /* Sections */
+        .section { margin-bottom: 15px; page-break-inside: avoid; }
+        .section-header { display: flex; align-items: center; margin-bottom: 20px; border-bottom: 3px solid #059669; padding-bottom: 12px; }
+        .section-title { font-size: 14px; font-weight: 700; color: #065f46; text-transform: uppercase; letter-spacing: 0.5px; margin: 0; }
+        
+        /* Grid */
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        .grid-item { font-size: 12px; }
+        .grid-item strong { display: block; color: #4b5563; font-size: 10px; text-transform: uppercase; margin-bottom: 2px; }
+        .grid-item span { color: #111827; font-weight: 500; font-size: 13px; }
+
+        /* Diagnosis Box */
+        .diagnosis-container { background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 12px; position: relative; overflow: hidden; }
+        .diagnosis-container::after { content: ''; position: absolute; top: 0; left: 0; width: 6px; height: 100%; background: #059669; }
+        .main-diagnosis { font-size: 18px; font-weight: 800; color: #064e3b; margin-bottom: 8px; }
+        .confidence-wrapper { margin-bottom: 10px; }
+        .confidence-label { font-size: 10px; color: #6b7280; margin-bottom: 2px; }
+        .progress-bar { height: 6px; background: #e5e7eb; border-radius: 3px; overflow: hidden; width: 100%; max-width: 300px; }
+        .progress-fill { height: 100%; border-radius: 3px; transition: width 0.5s ease; }
+        .advice-box { background: rgba(255,255,255,0.6); padding: 10px; border-radius: 6px; border-left: 3px solid #059669; }
+        
+        /* Tables */
+        table { width: 100%; border-collapse: collapse; margin-top: 5px; }
+        th { background: #f3f4f6; color: #374151; font-weight: 600; text-align: left; padding: 8px 10px; font-size: 10px; text-transform: uppercase; border-bottom: 2px solid #e5e7eb; }
+        td { padding: 8px 10px; border-bottom: 1px solid #f3f4f6; color: #1f2937; }
+        tr:last-child td { border-bottom: none; }
+        .text-center { text-align: center; }
+        .empty-state { text-align: center; padding: 15px; color: #9ca3af; font-style: italic; }
+
+        /* Cards */
+        .card { border-radius: 8px; border: 1px solid #e5e7eb; overflow: hidden; margin-bottom: 15px; }
+        .card-header { padding: 8px 12px; border-bottom: 1px solid rgba(0,0,0,0.05); }
+        .card-header h3 { font-size: 13px; font-weight: 700; margin: 0; text-transform: uppercase; letter-spacing: 0.5px; }
+        .card-body { padding: 12px; }
+        
+        .danger-card { border-color: #fecaca; background: #fef2f2; }
+        .danger-header { background: #fee2e2; color: #991b1b; }
+        
+        .warning-card { border-color: #fde68a; background: #fffbeb; }
+        .warning-header { background: #fef3c7; color: #92400e; }
+        
+        .info-card { border-color: #bfdbfe; background: #eff6ff; }
+        .info-header { background: #dbeafe; color: #1e40af; }
+        
+        .success-card { border-color: #bbf7d0; background: #f0fdf4; }
+        .success-header { background: #dcfce7; color: #166534; }
+
+        .details-table td { padding: 3px 0; border: none; }
+        .details-table tr:nth-child(2) td { padding-top: 25px; }
+        .advice-text { margin-top: 8px; font-size: 10px; color: #4b5563; border-top: 1px solid rgba(0,0,0,0.2); padding-top: 6px; }
+
+        /* Badges */
+        .badge { display: inline-block; padding: 2px 6px; border-radius: 999px; font-size: 9px; font-weight: 600; }
+        .badge-red { background: #fee2e2; color: #991b1b; }
+        .badge-green { background: #dcfce7; color: #166534; }
+        .badge-yellow { background: #fef3c7; color: #92400e; }
+
+        /* New Layout Utils */
+        .page-container { display: flex; flex-direction: column; }
+        
+        /* Diagnosis Grid */
+        .diagnosis-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px; margin-top: 40px; }
+        .diagnosis-card { height: 100%; display: flex; flex-direction: column; }
+        .diagnosis-card .card-body { flex: 1; display: flex; flex-direction: column; justify-content: space-between; }
+        .diagnosis-card .card-header { flex-shrink: 0; }
+        
+        /* Footer */
+        .footer { margin-top: 40px; padding-top: 20px; border-top: 3px solid #059669; text-align: center; color: #9ca3af; font-size: 9px; page-break-inside: avoid; }
+      </style>
+    </head>
+    <body style="background: #fff;">
+      <div class="container">
+        <div class="page-container">
+            <!-- Header -->
+            <div class="header">
+              <div class="header-title">
+                <h1>Medical Laboratory Report</h1>
+                <p>AI-Assisted Diagnostic Analysis</p>
+              </div>
+              <div class="report-meta">
+                <p><strong>Report ID:</strong> #${analysis.id}</p>
+                <p><strong>Date:</strong> ${format(new Date(analysis.created_at), 'PPP')}</p>
+                <p><strong>Generated:</strong> ${format(new Date(), 'p')}</p>
+              </div>
+            </div>
+
+            <!-- Patient Info -->
+            <div class="section" style="margin-bottom: 40px;">
+              <div class="section-header"><h2 class="section-title">Patient Information</h2></div>
+              <div class="grid-2">
+                <div class="grid-item"><strong>Patient Name</strong><span>${analysis.patient_name || '—'}</span></div>
+                <div class="grid-item"><strong>Patient ID</strong><span>${analysis.patient_id_display || '—'}</span></div>
+                <div class="grid-item"><strong>Date of Birth</strong><span>${analysis.birth_date ? format(new Date(analysis.birth_date), 'PPP') : '—'}</span></div>
+                <div class="grid-item"><strong>Age & Gender</strong><span>${age !== null ? `${age} years` : '—'} / Male</span></div>
+                <div class="grid-item"><strong>Phone Number</strong><span>${analysis.phone || analysis.email || '—'}</span></div>
+                <div class="grid-item"><strong>Doctor</strong><span>${analysis.doctor_name || '—'}</span></div>
+              </div>
+            </div>
+
+            <!-- AI Diagnosis & Detailed Results (GRID LAYOUT) -->
+            <div class="section" style="flex: 1;">
+              <div class="section-header"><h2 class="section-title">AI Diagnosis Summary</h2></div>
+              <div class="diagnosis-grid">
+                <!-- General Test Result -->
+                <div class="card warning-card diagnosis-card">
+                    <div class="card-header warning-header">
+                    <h3>General Test Result</h3>
+                    </div>
+                    <div class="card-body">
+                      <!-- Diagnosis Section -->
+                      <div style="margin-bottom: 15px;">
+                        <div style="font-size: 10px; color: #6b7280; font-weight: 700; text-transform: uppercase; margin-bottom: 4px;">Diagnosis</div>
+                        <div style="font-size: 16px; font-weight: 700; color: #92400e;">
+                            ${analysis.diagnosis && analysis.diagnosis.includes('Complex Liver Disease') ? 'Potential Liver Disease Detected' : analysis.diagnosis}
+                        </div>
+                      </div>
+
+                      <!-- Confidence Section -->
+                      <div style="margin-bottom: 15px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                            <div style="font-size: 10px; color: #6b7280; font-weight: 700; text-transform: uppercase;">Confidence</div>
+                            <span class="badge badge-yellow" style="font-size: 11px;">${analysis.confidence}%</span>
+                        </div>
+                        <div style="height: 8px; background: rgba(0,0,0,0.1); border-radius: 4px; overflow: hidden; width: 100%;">
+                            <div style="height: 100%; width:${analysis.confidence}%; background: #d97706; border-radius: 4px;"></div>
+                        </div>
+                      </div>
+
+                      <!-- Advice Section -->
+                      ${analysis.advice ? `
+                      <div>
+                        <div style="font-size: 10px; color: #6b7280; font-weight: 700; text-transform: uppercase; margin-bottom: 4px;">Clinical Advice</div>
+                        <div style="font-size: 12px; color: #1f2937; line-height: 1.5;">${analysis.advice}</div>
+                      </div>` : ''}
+                    </div>
+                </div>
+                <!-- Detailed Cards -->
+                ${detailedHTML || ''}
+              </div>
+            </div>
+
+            <!-- Footer -->
+            <div class="footer">
+              <p class="disclaimer">This report is generated by an AI-assisted diagnostic system and is intended for informational purposes only.</p>
+              <p>It should not replace professional medical advice, diagnosis, or treatment. Please consult with a qualified healthcare provider.</p>
+              <p style="margin-top: 10px;">MediAI System V2.0 • Confidential Patient Record</p>
+            </div>
+        </div>
+      </div>
+    </body>
+    </html>`
+  }
+
   const exportToPDF = async () => {
-    if (!reportRef.current) return
+    if (!selectedAnalysisForReport) return
 
     try {
-      // Create a simplified version for PDF export
-      const pdf = new jsPDF('p', 'mm', 'a4')
-      const pageWidth = pdf.internal.pageSize.getWidth()
-      const pageHeight = pdf.internal.pageSize.getHeight()
-      const margin = 20
-      let yPosition = margin
+      const html = buildReportHTML(selectedAnalysisForReport, patientLabTests)
 
-      // Add title
-      pdf.setFontSize(20)
-      pdf.text('Medical Dashboard Report', margin, yPosition)
-      yPosition += 15
+      // Create a hidden iframe to render the HTML for capture
+      const iframe = document.createElement('iframe')
+      iframe.style.position = 'fixed'
+      iframe.style.left = '-9999px'
+      iframe.style.top = '0'
+      iframe.style.width = '794px' // A4 width at 96 DPI
+      iframe.style.height = '1123px' // A4 height at 96 DPI
+      document.body.appendChild(iframe)
 
-      // Add date
-      pdf.setFontSize(12)
-      pdf.text(`Generated on: ${format(new Date(), 'PPP')}`, margin, yPosition)
-      yPosition += 10
+      const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document
+      if (!iframeDoc) {
+        document.body.removeChild(iframe)
+        toast.error('Failed to generate PDF')
+        return
+      }
 
-      // Add metrics summary
-      pdf.setFontSize(16)
-      pdf.text('Key Metrics:', margin, yPosition)
-      yPosition += 10
+      iframeDoc.open()
+      iframeDoc.write(html)
+      iframeDoc.close()
 
-      pdf.setFontSize(12)
-      const metrics = [
-        'Total Patients: 1,234',
-        'AI Analyses: 456',
-        'Reports Generated: 78',
-        'Success Rate: 94.2%',
-        'Avg Response Time: 2.3s',
-        'System Uptime: 99.8%'
-      ]
+      // Wait for images / fonts to load
+      await new Promise(resolve => setTimeout(resolve, 500))
 
-      metrics.forEach(metric => {
-        if (yPosition > pageHeight - 30) {
-          pdf.addPage()
-          yPosition = margin
-        }
-        pdf.text(metric, margin, yPosition)
-        yPosition += 8
+      const canvas = await html2canvas(iframeDoc.body, {
+        scale: 2,
+        useCORS: true,
+        logging: false,
+        width: 794,
+        windowWidth: 794,
       })
 
-      pdf.save(`medical-dashboard-${format(new Date(), 'yyyy-MM-dd')}.pdf`)
-      toast.success('PDF report exported successfully')
+      document.body.removeChild(iframe)
+
+      const pdf = new jsPDF('p', 'mm', 'a4')
+      const pageWidth = 210
+      const pageHeight = 297
+      const imgWidth = pageWidth
+      const imgHeight = (canvas.height * imgWidth) / canvas.width
+
+      // Multi-page support
+      let yOffset = 0
+      let remainingHeight = imgHeight
+
+      while (remainingHeight > 0) {
+        if (yOffset > 0) pdf.addPage()
+
+        pdf.addImage(
+          canvas.toDataURL('image/png'),
+          'PNG',
+          0,
+          -yOffset,
+          imgWidth,
+          imgHeight
+        )
+
+        yOffset += pageHeight
+        remainingHeight -= pageHeight
+      }
+
+      pdf.save(`medical-report-${selectedAnalysisForReport.patient_name}-${format(new Date(), 'yyyy-MM-dd')}.pdf`)
+      toast.success('Medical report PDF exported successfully')
     } catch (error) {
       console.error('Error generating PDF:', error)
       toast.error('Failed to export PDF. Please try again.')
@@ -1299,7 +1585,34 @@ export function AdvancedReports({ className }: AdvancedReportsProps) {
   }
 
   const printReport = () => {
-    window.print()
+    if (!selectedAnalysisForReport) return
+
+    const html = buildReportHTML(selectedAnalysisForReport, patientLabTests)
+
+    const printWindow = window.open('', '_blank', 'width=800,height=600')
+    if (!printWindow) {
+      toast.error('Please allow pop-ups to print the report')
+      return
+    }
+
+    printWindow.document.open()
+    printWindow.document.write(html)
+    printWindow.document.close()
+
+    // Wait for rendering then print
+    printWindow.onload = () => {
+      printWindow.focus()
+      printWindow.print()
+      printWindow.close()
+    }
+    // Fallback if onload doesn't fire
+    setTimeout(() => {
+      try {
+        printWindow.focus()
+        printWindow.print()
+        printWindow.close()
+      } catch (_) { /* window may already be closed */ }
+    }, 1000)
   }
 
   // Calculator functions
@@ -1535,219 +1848,217 @@ export function AdvancedReports({ className }: AdvancedReportsProps) {
       {/* Report Content */}
       <Tabs value={reportType} onValueChange={setReportType} className="space-y-6">
         <TabsList className="grid w-full grid-cols-4 rounded-xl gradient-bg">
-            <TabsTrigger value="overview" className="rounded-lg hover-lift data-[state=active]:bg-gradient-to-r data-[state=active]:from-green-500 data-[state=active]:via-emerald-500 data-[state=active]:to-teal-500 data-[state=active]:text-white">Overview</TabsTrigger>
-            <TabsTrigger value="patients" className="rounded-lg hover-lift data-[state=active]:bg-gradient-to-r data-[state=active]:from-green-500 data-[state=active]:via-emerald-500 data-[state=active]:to-teal-500 data-[state=active]:text-white">Patients</TabsTrigger>
-            <TabsTrigger value="medical-tools" className="rounded-lg hover-lift data-[state=active]:bg-gradient-to-r data-[state=active]:from-green-500 data-[state=active]:via-emerald-500 data-[state=active]:to-teal-500 data-[state=active]:text-white">Medical Tools</TabsTrigger>
-            <TabsTrigger value="ongoing-cases" className="rounded-lg hover-lift data-[state=active]:bg-gradient-to-r data-[state=active]:from-green-500 data-[state=active]:via-emerald-500 data-[state=active]:to-teal-500 data-[state=active]:text-white">Case Management</TabsTrigger>
-          </TabsList>
+          <TabsTrigger value="overview" className="rounded-lg hover-lift data-[state=active]:bg-gradient-to-r data-[state=active]:from-green-500 data-[state=active]:via-emerald-500 data-[state=active]:to-teal-500 data-[state=active]:text-white">Overview</TabsTrigger>
+          <TabsTrigger value="patients" className="rounded-lg hover-lift data-[state=active]:bg-gradient-to-r data-[state=active]:from-green-500 data-[state=active]:via-emerald-500 data-[state=active]:to-teal-500 data-[state=active]:text-white">Patients</TabsTrigger>
+          <TabsTrigger value="medical-tools" className="rounded-lg hover-lift data-[state=active]:bg-gradient-to-r data-[state=active]:from-green-500 data-[state=active]:via-emerald-500 data-[state=active]:to-teal-500 data-[state=active]:text-white">Medical Tools</TabsTrigger>
+          <TabsTrigger value="ongoing-cases" className="rounded-lg hover-lift data-[state=active]:bg-gradient-to-r data-[state=active]:from-green-500 data-[state=active]:via-emerald-500 data-[state=active]:to-teal-500 data-[state=active]:text-white">Case Management</TabsTrigger>
+        </TabsList>
 
         <TabsContent value="overview" className="space-y-6">
-           {/* Key Metrics */}
-           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-             <Card className="gradient-card hover-lift">
-               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                 <CardTitle className="text-sm font-semibold gradient-text">Total Patients</CardTitle>
-                 <Users className="h-4 w-4 text-muted-foreground" />
-               </CardHeader>
-               <CardContent>
-                 <div className="text-2xl font-bold gradient-text">
-                   {isLoadingOverview ? '...' : overviewMetrics.totalPatients}
-                 </div>
-                 <p className="text-xs text-muted-foreground">
-                   Active patients in system
-                 </p>
-               </CardContent>
-             </Card>
+          {/* Key Metrics */}
+          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+            <Card className="gradient-card hover-lift">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-semibold gradient-text">Total Patients</CardTitle>
+                <Users className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold gradient-text">
+                  {isLoadingOverview ? '...' : overviewMetrics.totalPatients}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Active patients in system
+                </p>
+              </CardContent>
+            </Card>
 
-             <Card className="gradient-card hover-lift">
-               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                 <CardTitle className="text-sm font-semibold gradient-text">AI Analyses</CardTitle>
-                 <Activity className="h-4 w-4 text-muted-foreground" />
-               </CardHeader>
-               <CardContent>
-                 <div className="text-2xl font-bold gradient-text">
-                   {isLoadingOverview ? '...' : overviewMetrics.totalAnalyses}
-                 </div>
-                 <p className="text-xs text-muted-foreground">
-                   Total analyses performed
-                 </p>
-               </CardContent>
-             </Card>
+            <Card className="gradient-card hover-lift">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-semibold gradient-text">AI Analyses</CardTitle>
+                <Activity className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold gradient-text">
+                  {isLoadingOverview ? '...' : overviewMetrics.totalAnalyses}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Total analyses performed
+                </p>
+              </CardContent>
+            </Card>
 
-             <Card className="gradient-card hover-lift">
-               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                 <CardTitle className="text-sm font-semibold gradient-text">Reports Generated</CardTitle>
-                 <FileText className="h-4 w-4 text-muted-foreground" />
-               </CardHeader>
-               <CardContent>
-                 <div className="text-2xl font-bold gradient-text">
-                   {isLoadingOverview ? '...' : overviewMetrics.reportsGenerated}
-                 </div>
-                 <p className="text-xs text-muted-foreground">
-                   Available medical reports
-                 </p>
-               </CardContent>
-             </Card>
+            <Card className="gradient-card hover-lift">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-semibold gradient-text">Reports Generated</CardTitle>
+                <FileText className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold gradient-text">
+                  {isLoadingOverview ? '...' : overviewMetrics.reportsGenerated}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Available medical reports
+                </p>
+              </CardContent>
+            </Card>
 
-             <Card className="gradient-card hover-lift">
-               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                 <CardTitle className="text-sm font-semibold gradient-text">Success Rate</CardTitle>
-                 <TrendingUp className="h-4 w-4 text-muted-foreground" />
-               </CardHeader>
-               <CardContent>
-                 <div className="text-2xl font-bold gradient-text">
-                   {isLoadingOverview ? '...' : `${overviewMetrics.successRate}%`}
-                 </div>
-                 <p className="text-xs text-muted-foreground">
-                   High confidence analyses
-                 </p>
-               </CardContent>
-             </Card>
-           </div>
+            <Card className="gradient-card hover-lift">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-semibold gradient-text">Success Rate</CardTitle>
+                <TrendingUp className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold gradient-text">
+                  {isLoadingOverview ? '...' : `${overviewMetrics.successRate}%`}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  High confidence analyses
+                </p>
+              </CardContent>
+            </Card>
+          </div>
 
-           {/* Performance Indicators */}
-           <div className="grid gap-6 md:grid-cols-2">
-             <Card className="gradient-card shadow-lg">
-               <CardHeader>
-                 <CardTitle className="flex items-center gap-3">
-                   <Activity className="h-5 w-5" />
-                   <span className="gradient-text">System Performance</span>
-                 </CardTitle>
-               </CardHeader>
-               <CardContent>
-                 <div className="grid grid-cols-2 gap-4">
-                   <div className="text-center p-4 bg-muted/50 rounded-lg">
-                     <div className="text-2xl font-bold gradient-text">{overviewMetrics.avgResponseTime}s</div>
-                     <div className="text-sm text-muted-foreground">Avg Response Time</div>
-                   </div>
-                   <div className="text-center p-4 bg-muted/50 rounded-lg">
-                     <div className="text-2xl font-bold gradient-text">{overviewMetrics.systemUptime}%</div>
-                     <div className="text-sm text-muted-foreground">System Uptime</div>
-                   </div>
-                 </div>
-               </CardContent>
-             </Card>
+          {/* Performance Indicators */}
+          <div className="grid gap-6 md:grid-cols-2">
+            <Card className="gradient-card shadow-lg">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-3">
+                  <Activity className="h-5 w-5" />
+                  <span className="gradient-text">System Performance</span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="text-center p-4 bg-muted/50 rounded-lg">
+                    <div className="text-2xl font-bold gradient-text">{overviewMetrics.avgResponseTime}s</div>
+                    <div className="text-sm text-muted-foreground">Avg Response Time</div>
+                  </div>
+                  <div className="text-center p-4 bg-muted/50 rounded-lg">
+                    <div className="text-2xl font-bold gradient-text">{overviewMetrics.systemUptime}%</div>
+                    <div className="text-sm text-muted-foreground">System Uptime</div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
 
-             <Card className="gradient-card shadow-lg">
-               <CardHeader>
-                 <CardTitle className="flex items-center gap-3">
-                   <AlertCircle className="h-5 w-5" />
-                   <span className="gradient-text">System Alerts</span>
-                 </CardTitle>
-               </CardHeader>
-               <CardContent>
-                 {alerts.length === 0 ? (
-                   <div className="text-center py-8">
-                     <CheckCircle2 className="h-12 w-12 text-green-500 mx-auto mb-4" />
-                     <p className="text-muted-foreground">All systems operational</p>
-                   </div>
-                 ) : (
-                   <div className="space-y-3">
-                     {alerts.map((alert) => (
-                       <div key={alert.id} className={`p-3 rounded-lg border ${
-                         alert.type === 'critical' ? 'bg-red-50 border-red-200' :
-                         alert.type === 'warning' ? 'bg-yellow-50 border-yellow-200' :
-                         'bg-blue-50 border-blue-200'
-                       }`}>
-                         <div className="flex items-center gap-2">
-                           {alert.type === 'critical' && <AlertCircle className="h-4 w-4 text-red-600" />}
-                           {alert.type === 'warning' && <AlertCircle className="h-4 w-4 text-yellow-600" />}
-                           {alert.type === 'info' && <Activity className="h-4 w-4 text-blue-600" />}
-                           <span className={`text-sm font-medium ${
-                             alert.type === 'critical' ? 'text-red-800' :
-                             alert.type === 'warning' ? 'text-yellow-800' :
-                             'text-blue-800'
-                           }`}>
-                             {alert.message}
-                           </span>
-                         </div>
-                         <div className="text-xs text-muted-foreground mt-1">
-                           {alert.timestamp.toLocaleTimeString()}
-                         </div>
-                       </div>
-                     ))}
-                   </div>
-                 )}
-               </CardContent>
-             </Card>
-           </div>
+            <Card className="gradient-card shadow-lg">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-3">
+                  <AlertCircle className="h-5 w-5" />
+                  <span className="gradient-text">System Alerts</span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {alerts.length === 0 ? (
+                  <div className="text-center py-8">
+                    <CheckCircle2 className="h-12 w-12 text-green-500 mx-auto mb-4" />
+                    <p className="text-muted-foreground">All systems operational</p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {alerts.map((alert) => (
+                      <div key={alert.id} className={`p-3 rounded-lg border ${alert.type === 'critical' ? 'bg-red-50 border-red-200' :
+                        alert.type === 'warning' ? 'bg-yellow-50 border-yellow-200' :
+                          'bg-blue-50 border-blue-200'
+                        }`}>
+                        <div className="flex items-center gap-2">
+                          {alert.type === 'critical' && <AlertCircle className="h-4 w-4 text-red-600" />}
+                          {alert.type === 'warning' && <AlertCircle className="h-4 w-4 text-yellow-600" />}
+                          {alert.type === 'info' && <Activity className="h-4 w-4 text-blue-600" />}
+                          <span className={`text-sm font-medium ${alert.type === 'critical' ? 'text-red-800' :
+                            alert.type === 'warning' ? 'text-yellow-800' :
+                              'text-blue-800'
+                            }`}>
+                            {alert.message}
+                          </span>
+                        </div>
+                        <div className="text-xs text-muted-foreground mt-1">
+                          {alert.timestamp.toLocaleTimeString()}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
 
-           {/* Recent Activities and Quick Actions */}
-           <div className="grid gap-6 md:grid-cols-2">
-             <Card className="gradient-card shadow-lg">
-               <CardHeader>
-                 <CardTitle className="flex items-center gap-3">
-                   <Activity className="h-5 w-5" />
-                   <span className="gradient-text">Recent Activities</span>
-                 </CardTitle>
-               </CardHeader>
-               <CardContent>
-                 {recentActivities.length === 0 ? (
-                   <div className="text-center py-8">
-                     <Activity className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                     <p className="text-muted-foreground">No recent activities</p>
-                   </div>
-                 ) : (
-                   <div className="space-y-3">
-                     {recentActivities.map((activity) => (
-                       <div key={activity.id} className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
-                         <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                         <div className="flex-1">
-                           <p className="text-sm font-medium">{activity.description}</p>
-                           <p className="text-xs text-muted-foreground">
-                             {activity.timestamp.toLocaleString()}
-                           </p>
-                         </div>
-                       </div>
-                     ))}
-                   </div>
-                 )}
-               </CardContent>
-             </Card>
+          {/* Recent Activities and Quick Actions */}
+          <div className="grid gap-6 md:grid-cols-2">
+            <Card className="gradient-card shadow-lg">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-3">
+                  <Activity className="h-5 w-5" />
+                  <span className="gradient-text">Recent Activities</span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {recentActivities.length === 0 ? (
+                  <div className="text-center py-8">
+                    <Activity className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                    <p className="text-muted-foreground">No recent activities</p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {recentActivities.map((activity) => (
+                      <div key={activity.id} className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
+                        <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                        <div className="flex-1">
+                          <p className="text-sm font-medium">{activity.description}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {activity.timestamp.toLocaleString()}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
 
-             <Card className="gradient-card shadow-lg">
-               <CardHeader>
-                 <CardTitle className="flex items-center gap-3">
-                   <Activity className="h-5 w-5" />
-                   <span className="gradient-text">Quick Actions</span>
-                 </CardTitle>
-                 <CardDescription>Common tasks and shortcuts</CardDescription>
-               </CardHeader>
-               <CardContent>
-                 <div className="grid grid-cols-2 gap-3">
-                   <Button
-                     className="h-auto p-4 flex flex-col items-center gap-2 rounded-xl bg-gradient-to-r from-green-500 via-emerald-500 to-teal-500 hover:from-green-600 hover:via-emerald-600 hover:to-teal-600 transform hover:scale-105 transition-all duration-300 ease-in-out text-white"
-                     onClick={() => setReportType("patients")}
-                   >
-                     <Users className="h-5 w-5" />
-                     <span className="text-xs">View Patients</span>
-                   </Button>
-                   <Button
-                     className="h-auto p-4 flex flex-col items-center gap-2 rounded-xl bg-gradient-to-r from-green-500 via-emerald-500 to-teal-500 hover:from-green-600 hover:via-emerald-600 hover:to-teal-600 transform hover:scale-105 transition-all duration-300 ease-in-out text-white"
-                     onClick={() => window.open('/', '_blank')}
-                   >
-                     <Activity className="h-5 w-5" />
-                     <span className="text-xs">Run Analysis</span>
-                   </Button>
-                   <Button
-                     className="h-auto p-4 flex flex-col items-center gap-2 rounded-xl bg-gradient-to-r from-green-500 via-emerald-500 to-teal-500 hover:from-green-600 hover:via-emerald-600 hover:to-teal-600 transform hover:scale-105 transition-all duration-300 ease-in-out text-white"
-                     onClick={() => setReportType("medical-tools")}
-                   >
-                     <BarChart3 className="h-5 w-5" />
-                     <span className="text-xs">View Analytics</span>
-                   </Button>
-                   <Button
-                     className="h-auto p-4 flex flex-col items-center gap-2 rounded-xl bg-gradient-to-r from-green-500 via-emerald-500 to-teal-500 hover:from-green-600 hover:via-emerald-600 hover:to-teal-600 transform hover:scale-105 transition-all duration-300 ease-in-out text-white"
-                     onClick={exportToPDF}
-                   >
-                     <Download className="h-5 w-5" />
-                     <span className="text-xs">Export Report</span>
-                   </Button>
-                 </div>
-               </CardContent>
-             </Card>
-           </div>
-         </TabsContent>
+            <Card className="gradient-card shadow-lg">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-3">
+                  <Activity className="h-5 w-5" />
+                  <span className="gradient-text">Quick Actions</span>
+                </CardTitle>
+                <CardDescription>Common tasks and shortcuts</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-2 gap-3">
+                  <Button
+                    className="h-auto p-4 flex flex-col items-center gap-2 rounded-xl bg-gradient-to-r from-green-500 via-emerald-500 to-teal-500 hover:from-green-600 hover:via-emerald-600 hover:to-teal-600 transform hover:scale-105 transition-all duration-300 ease-in-out text-white"
+                    onClick={() => setReportType("patients")}
+                  >
+                    <Users className="h-5 w-5" />
+                    <span className="text-xs">View Patients</span>
+                  </Button>
+                  <Button
+                    className="h-auto p-4 flex flex-col items-center gap-2 rounded-xl bg-gradient-to-r from-green-500 via-emerald-500 to-teal-500 hover:from-green-600 hover:via-emerald-600 hover:to-teal-600 transform hover:scale-105 transition-all duration-300 ease-in-out text-white"
+                    onClick={() => window.open('/', '_blank')}
+                  >
+                    <Activity className="h-5 w-5" />
+                    <span className="text-xs">Run Analysis</span>
+                  </Button>
+                  <Button
+                    className="h-auto p-4 flex flex-col items-center gap-2 rounded-xl bg-gradient-to-r from-green-500 via-emerald-500 to-teal-500 hover:from-green-600 hover:via-emerald-600 hover:to-teal-600 transform hover:scale-105 transition-all duration-300 ease-in-out text-white"
+                    onClick={() => setReportType("medical-tools")}
+                  >
+                    <BarChart3 className="h-5 w-5" />
+                    <span className="text-xs">View Analytics</span>
+                  </Button>
+                  <Button
+                    className="h-auto p-4 flex flex-col items-center gap-2 rounded-xl bg-gradient-to-r from-green-500 via-emerald-500 to-teal-500 hover:from-green-600 hover:via-emerald-600 hover:to-teal-600 transform hover:scale-105 transition-all duration-300 ease-in-out text-white"
+                    onClick={exportToPDF}
+                  >
+                    <Download className="h-5 w-5" />
+                    <span className="text-xs">Export Report</span>
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
 
         <TabsContent value="patients" className="space-y-6">
           <Card className="gradient-card shadow-lg">
@@ -1801,95 +2112,17 @@ export function AdvancedReports({ className }: AdvancedReportsProps) {
                   <div className="md:hidden p-4 bg-muted/50 rounded-t-lg">
                     <h3 className="font-semibold text-sm text-muted-foreground">Patient Records</h3>
                   </div>
-                  
+
                   {/* Scrollable container that only appears when there are more than 5 patients */}
                   <div className={filteredAnalyses.length > 5 ? "overflow-y-auto max-h-[400px] pr-2" : ""}>
                     {/* Patient Rows */}
-                  {filteredAnalyses.map((analysis, index) => (
-                    <div key={`analysis-${analysis.id}`}>
-                      {/* Desktop Table Row */}
-                      <div className="hidden md:grid grid-cols-13 gap-4 p-4 border-b border-border/50 hover:bg-muted/20 transition-colors animate-in slide-in-from-bottom-2 duration-300" style={{ animationDelay: `${index * 50}ms` }}>
-                        {/* Profile Picture */}
-                        <div className="col-span-1 flex items-center">
-                          <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold text-sm">
-                            {analysis.profile_picture ? (
-                              <img
-                                src={analysis.profile_picture}
-                                alt={`${analysis.patient_name} profile`}
-                                className="w-12 h-12 rounded-full object-cover"
-                              />
-                            ) : (
-                              (analysis.patient_name || 'U')[0].toUpperCase()
-                            )}
-                          </div>
-                        </div>
-
-                        {/* Patient Info */}
-                        <div className="col-span-2 flex flex-col justify-center">
-                          <h3 className="font-semibold text-foreground text-sm">{analysis.patient_name}</h3>
-                          <p className="text-xs text-muted-foreground">ID: {analysis.patient_id_display}</p>
-                          <p className="text-xs text-muted-foreground">
-                            Age: {analysis.birth_date ? new Date().getFullYear() - new Date(analysis.birth_date).getFullYear() : 'N/A'} / Gender: Male
-                          </p>
-                        </div>
-
-                        {/* Contacts */}
-                        <div className="col-span-2 flex flex-col justify-center space-y-1">
-                          {analysis.email && (
-                            <p className="text-xs text-muted-foreground">📧 {analysis.email}</p>
-                          )}
-                          {analysis.phone && (
-                            <p className="text-xs text-muted-foreground">📱 {analysis.phone}</p>
-                          )}
-                          {!analysis.email && !analysis.phone && (
-                            <p className="text-xs text-muted-foreground text-center">-</p>
-                          )}
-                        </div>
-
-
-                        {/* Test Results */}
-                        <div className="col-span-4 flex flex-col justify-center">
-                          {renderDiagnosticBadges(analysis)}
-                        </div>
-
-                        {/* Actions */}
-                        <div className="col-span-3 flex items-center gap-1">
-                           <Button
-                             size="sm"
-                             variant="outline"
-                             onClick={() => handleViewReport(analysis)}
-                             className="text-green-600 border-green-200 hover:bg-green-50 text-xs px-2"
-                           >
-                             <Eye className="h-3 w-3 mr-1" />
-                             View
-                           </Button>
-                           <Button
-                             size="sm"
-                             variant="outline"
-                             onClick={() => handleEditAnalysis(analysis)}
-                             className="text-blue-600 border-blue-200 hover:bg-blue-50 text-xs px-2"
-                           >
-                             <Edit className="h-3 w-3 mr-1" />
-                             Edit
-                           </Button>
-                           <Button
-                             size="sm"
-                             variant="outline"
-                             onClick={() => handleArchiveAnalysis(analysis.id)}
-                             className="text-orange-600 border-orange-200 hover:bg-orange-50 text-xs px-2"
-                           >
-                             <Trash2 className="h-3 w-3 mr-1" />
-                             Archive
-                           </Button>
-                         </div>
-                      </div>
-
-                      {/* Mobile Card Layout */}
-                      <Card key={`mobile-${analysis.id}`} className="md:hidden gradient-card hover-lift animate-in slide-in-from-bottom-2 duration-300 mx-4 mb-4" style={{ animationDelay: `${index * 50}ms` }}>
-                        <CardContent className="p-4">
-                          <div className="flex items-start gap-3 mb-3">
-                            {/* Profile Picture */}
-                            <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold text-sm flex-shrink-0">
+                    {filteredAnalyses.map((analysis, index) => (
+                      <div key={`analysis-${analysis.id}`}>
+                        {/* Desktop Table Row */}
+                        <div className="hidden md:grid grid-cols-13 gap-4 p-4 border-b border-border/50 hover:bg-muted/20 transition-colors animate-in slide-in-from-bottom-2 duration-300" style={{ animationDelay: `${index * 50}ms` }}>
+                          {/* Profile Picture */}
+                          <div className="col-span-1 flex items-center">
+                            <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold text-sm">
                               {analysis.profile_picture ? (
                                 <img
                                   src={analysis.profile_picture}
@@ -1900,49 +2133,52 @@ export function AdvancedReports({ className }: AdvancedReportsProps) {
                                 (analysis.patient_name || 'U')[0].toUpperCase()
                               )}
                             </div>
+                          </div>
 
-                            {/* Patient Info */}
-                            <div className="flex-1 min-w-0">
-                              <h3 className="font-semibold text-foreground text-sm">{analysis.patient_name}</h3>
-                              <p className="text-xs text-muted-foreground">ID: {analysis.patient_id_display}</p>
-                              <p className="text-xs text-muted-foreground">
-                                Age: {analysis.birth_date ? new Date().getFullYear() - new Date(analysis.birth_date).getFullYear() : 'N/A'} / Gender: Male
-                              </p>
-                            </div>
+                          {/* Patient Info */}
+                          <div className="col-span-2 flex flex-col justify-center">
+                            <h3 className="font-semibold text-foreground text-sm">{analysis.patient_name}</h3>
+                            <p className="text-xs text-muted-foreground">ID: {analysis.patient_id_display}</p>
+                            <p className="text-xs text-muted-foreground">
+                              Age: {analysis.birth_date ? new Date().getFullYear() - new Date(analysis.birth_date).getFullYear() : 'N/A'} / Gender: Male
+                            </p>
                           </div>
 
                           {/* Contacts */}
-                          <div className="mb-3 space-y-1">
+                          <div className="col-span-2 flex flex-col justify-center space-y-1">
                             {analysis.email && (
                               <p className="text-xs text-muted-foreground">📧 {analysis.email}</p>
                             )}
                             {analysis.phone && (
                               <p className="text-xs text-muted-foreground">📱 {analysis.phone}</p>
                             )}
+                            {!analysis.email && !analysis.phone && (
+                              <p className="text-xs text-muted-foreground text-center">-</p>
+                            )}
                           </div>
 
 
                           {/* Test Results */}
-                          <div className="mb-3">
+                          <div className="col-span-4 flex flex-col justify-center">
                             {renderDiagnosticBadges(analysis)}
                           </div>
 
                           {/* Actions */}
-                          <div className="flex gap-2">
+                          <div className="col-span-3 flex items-center gap-1">
                             <Button
                               size="sm"
                               variant="outline"
                               onClick={() => handleViewReport(analysis)}
-                              className="text-green-600 border-green-200 hover:bg-green-50 text-xs flex-1"
+                              className="text-green-600 border-green-200 hover:bg-green-50 text-xs px-2"
                             >
                               <Eye className="h-3 w-3 mr-1" />
-                              View Report
+                              View
                             </Button>
                             <Button
                               size="sm"
                               variant="outline"
                               onClick={() => handleEditAnalysis(analysis)}
-                              className="text-blue-600 border-blue-200 hover:bg-blue-50 text-xs flex-1"
+                              className="text-blue-600 border-blue-200 hover:bg-blue-50 text-xs px-2"
                             >
                               <Edit className="h-3 w-3 mr-1" />
                               Edit
@@ -1951,16 +2187,91 @@ export function AdvancedReports({ className }: AdvancedReportsProps) {
                               size="sm"
                               variant="outline"
                               onClick={() => handleArchiveAnalysis(analysis.id)}
-                              className="text-orange-600 border-orange-200 hover:bg-orange-50 text-xs flex-1"
+                              className="text-orange-600 border-orange-200 hover:bg-orange-50 text-xs px-2"
                             >
                               <Trash2 className="h-3 w-3 mr-1" />
                               Archive
                             </Button>
                           </div>
-                        </CardContent>
-                      </Card>
-                    </div>
-                  ))}
+                        </div>
+
+                        {/* Mobile Card Layout */}
+                        <Card key={`mobile-${analysis.id}`} className="md:hidden gradient-card hover-lift animate-in slide-in-from-bottom-2 duration-300 mx-4 mb-4" style={{ animationDelay: `${index * 50}ms` }}>
+                          <CardContent className="p-4">
+                            <div className="flex items-start gap-3 mb-3">
+                              {/* Profile Picture */}
+                              <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold text-sm flex-shrink-0">
+                                {analysis.profile_picture ? (
+                                  <img
+                                    src={analysis.profile_picture}
+                                    alt={`${analysis.patient_name} profile`}
+                                    className="w-12 h-12 rounded-full object-cover"
+                                  />
+                                ) : (
+                                  (analysis.patient_name || 'U')[0].toUpperCase()
+                                )}
+                              </div>
+
+                              {/* Patient Info */}
+                              <div className="flex-1 min-w-0">
+                                <h3 className="font-semibold text-foreground text-sm">{analysis.patient_name}</h3>
+                                <p className="text-xs text-muted-foreground">ID: {analysis.patient_id_display}</p>
+                                <p className="text-xs text-muted-foreground">
+                                  Age: {analysis.birth_date ? new Date().getFullYear() - new Date(analysis.birth_date).getFullYear() : 'N/A'} / Gender: Male
+                                </p>
+                              </div>
+                            </div>
+
+                            {/* Contacts */}
+                            <div className="mb-3 space-y-1">
+                              {analysis.email && (
+                                <p className="text-xs text-muted-foreground">📧 {analysis.email}</p>
+                              )}
+                              {analysis.phone && (
+                                <p className="text-xs text-muted-foreground">📱 {analysis.phone}</p>
+                              )}
+                            </div>
+
+
+                            {/* Test Results */}
+                            <div className="mb-3">
+                              {renderDiagnosticBadges(analysis)}
+                            </div>
+
+                            {/* Actions */}
+                            <div className="flex gap-2">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => handleViewReport(analysis)}
+                                className="text-green-600 border-green-200 hover:bg-green-50 text-xs flex-1"
+                              >
+                                <Eye className="h-3 w-3 mr-1" />
+                                View Report
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => handleEditAnalysis(analysis)}
+                                className="text-blue-600 border-blue-200 hover:bg-blue-50 text-xs flex-1"
+                              >
+                                <Edit className="h-3 w-3 mr-1" />
+                                Edit
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => handleArchiveAnalysis(analysis.id)}
+                                className="text-orange-600 border-orange-200 hover:bg-orange-50 text-xs flex-1"
+                              >
+                                <Trash2 className="h-3 w-3 mr-1" />
+                                Archive
+                              </Button>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      </div>
+                    ))}
                   </div>
                 </div>
               )}
@@ -1969,341 +2280,341 @@ export function AdvancedReports({ className }: AdvancedReportsProps) {
         </TabsContent>
 
         <TabsContent value="medical-tools" className="space-y-6">
-           {/* Medical Calculators */}
-           <Card className="gradient-card shadow-lg">
-             <CardHeader>
-               <CardTitle className="flex items-center gap-3">
-                 <Activity className="h-5 w-5" />
-                 <span className="gradient-text">Medical Calculators</span>
-               </CardTitle>
-               <CardDescription>Quick medical calculations for clinical decision making</CardDescription>
-             </CardHeader>
-             <CardContent>
-               <Tabs defaultValue="bmi" className="w-full">
-                 <TabsList className="grid w-full grid-cols-4">
-                   <TabsTrigger value="bmi">BMI Calculator</TabsTrigger>
-                   <TabsTrigger value="gfr">GFR Calculator</TabsTrigger>
-                   <TabsTrigger value="fluid">Fluid Balance</TabsTrigger>
-                   <TabsTrigger value="dose">Dose Calculator</TabsTrigger>
-                 </TabsList>
+          {/* Medical Calculators */}
+          <Card className="gradient-card shadow-lg">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-3">
+                <Activity className="h-5 w-5" />
+                <span className="gradient-text">Medical Calculators</span>
+              </CardTitle>
+              <CardDescription>Quick medical calculations for clinical decision making</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Tabs defaultValue="bmi" className="w-full">
+                <TabsList className="grid w-full grid-cols-4">
+                  <TabsTrigger value="bmi">BMI Calculator</TabsTrigger>
+                  <TabsTrigger value="gfr">GFR Calculator</TabsTrigger>
+                  <TabsTrigger value="fluid">Fluid Balance</TabsTrigger>
+                  <TabsTrigger value="dose">Dose Calculator</TabsTrigger>
+                </TabsList>
 
-                 <TabsContent value="bmi" className="space-y-4 mt-4">
-                   <div className="grid grid-cols-2 gap-4">
-                     <div className="space-y-2">
-                       <Label htmlFor="weight">Weight (kg)</Label>
-                       <Input
-                         id="weight"
-                         type="number"
-                         placeholder="70"
-                         value={bmiInputs.weight}
-                         onChange={(e) => setBmiInputs({...bmiInputs, weight: e.target.value})}
-                       />
-                     </div>
-                     <div className="space-y-2">
-                       <Label htmlFor="height">Height (cm)</Label>
-                       <Input
-                         id="height"
-                         type="number"
-                         placeholder="170"
-                         value={bmiInputs.height}
-                         onChange={(e) => setBmiInputs({...bmiInputs, height: e.target.value})}
-                       />
-                     </div>
-                   </div>
-                   <Button
-                     className="w-full bg-gradient-to-r from-green-500 via-emerald-500 to-teal-500 hover:from-green-600 hover:via-emerald-600 hover:to-teal-600 text-white font-semibold py-2 px-4 rounded-lg shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300 ease-in-out"
-                     onClick={calculateBMI}
-                   >
-                     Calculate BMI
-                   </Button>
-                   <div className="p-4 bg-muted rounded-lg">
-                     <p className="text-sm text-muted-foreground">BMI Result: <span className="font-bold text-foreground">{bmiResult.bmi || '--'}</span></p>
-                     <p className="text-xs text-muted-foreground mt-1">Category: {bmiResult.category || '--'}</p>
-                   </div>
-                 </TabsContent>
+                <TabsContent value="bmi" className="space-y-4 mt-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="weight">Weight (kg)</Label>
+                      <Input
+                        id="weight"
+                        type="number"
+                        placeholder="70"
+                        value={bmiInputs.weight}
+                        onChange={(e) => setBmiInputs({ ...bmiInputs, weight: e.target.value })}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="height">Height (cm)</Label>
+                      <Input
+                        id="height"
+                        type="number"
+                        placeholder="170"
+                        value={bmiInputs.height}
+                        onChange={(e) => setBmiInputs({ ...bmiInputs, height: e.target.value })}
+                      />
+                    </div>
+                  </div>
+                  <Button
+                    className="w-full bg-gradient-to-r from-green-500 via-emerald-500 to-teal-500 hover:from-green-600 hover:via-emerald-600 hover:to-teal-600 text-white font-semibold py-2 px-4 rounded-lg shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300 ease-in-out"
+                    onClick={calculateBMI}
+                  >
+                    Calculate BMI
+                  </Button>
+                  <div className="p-4 bg-muted rounded-lg">
+                    <p className="text-sm text-muted-foreground">BMI Result: <span className="font-bold text-foreground">{bmiResult.bmi || '--'}</span></p>
+                    <p className="text-xs text-muted-foreground mt-1">Category: {bmiResult.category || '--'}</p>
+                  </div>
+                </TabsContent>
 
-                 <TabsContent value="gfr" className="space-y-4 mt-4">
-                   <div className="grid grid-cols-2 gap-4">
-                     <div className="space-y-2">
-                       <Label htmlFor="creatinine">Creatinine (mg/dL)</Label>
-                       <Input
-                         id="creatinine"
-                         type="number"
-                         placeholder="1.0"
-                         value={gfrInputs.creatinine}
-                         onChange={(e) => setGfrInputs({...gfrInputs, creatinine: e.target.value})}
-                       />
-                     </div>
-                     <div className="space-y-2">
-                       <Label htmlFor="age">Age (years)</Label>
-                       <Input
-                         id="age"
-                         type="number"
-                         placeholder="45"
-                         value={gfrInputs.age}
-                         onChange={(e) => setGfrInputs({...gfrInputs, age: e.target.value})}
-                       />
-                     </div>
-                     <div className="space-y-2">
-                       <Label htmlFor="gender">Gender</Label>
-                       <Select value={gfrInputs.gender} onValueChange={(value) => setGfrInputs({...gfrInputs, gender: value})}>
-                         <SelectTrigger>
-                           <SelectValue placeholder="Select gender" />
-                         </SelectTrigger>
-                         <SelectContent>
-                           <SelectItem value="male">Male</SelectItem>
-                           <SelectItem value="female">Female</SelectItem>
-                         </SelectContent>
-                       </Select>
-                     </div>
-                     <div className="space-y-2">
-                       <Label htmlFor="race">Race</Label>
-                       <Select value={gfrInputs.race} onValueChange={(value) => setGfrInputs({...gfrInputs, race: value})}>
-                         <SelectTrigger>
-                           <SelectValue placeholder="Select race" />
-                         </SelectTrigger>
-                         <SelectContent>
-                           <SelectItem value="black">Black</SelectItem>
-                           <SelectItem value="other">Other</SelectItem>
-                         </SelectContent>
-                       </Select>
-                     </div>
-                   </div>
-                   <Button
-                     className="w-full bg-gradient-to-r from-green-500 via-emerald-500 to-teal-500 hover:from-green-600 hover:via-emerald-600 hover:to-teal-600 text-white font-semibold py-2 px-4 rounded-lg shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300 ease-in-out"
-                     onClick={calculateGFR}
-                   >
-                     Calculate GFR (CKD-EPI)
-                   </Button>
-                   <div className="p-4 bg-muted rounded-lg">
-                     <p className="text-sm text-muted-foreground">eGFR: <span className="font-bold text-foreground">{gfrResult.egfr || '--'} mL/min/1.73m²</span></p>
-                     <p className="text-xs text-muted-foreground mt-1">Stage: {gfrResult.stage || '--'}</p>
-                   </div>
-                 </TabsContent>
+                <TabsContent value="gfr" className="space-y-4 mt-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="creatinine">Creatinine (mg/dL)</Label>
+                      <Input
+                        id="creatinine"
+                        type="number"
+                        placeholder="1.0"
+                        value={gfrInputs.creatinine}
+                        onChange={(e) => setGfrInputs({ ...gfrInputs, creatinine: e.target.value })}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="age">Age (years)</Label>
+                      <Input
+                        id="age"
+                        type="number"
+                        placeholder="45"
+                        value={gfrInputs.age}
+                        onChange={(e) => setGfrInputs({ ...gfrInputs, age: e.target.value })}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="gender">Gender</Label>
+                      <Select value={gfrInputs.gender} onValueChange={(value) => setGfrInputs({ ...gfrInputs, gender: value })}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select gender" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="male">Male</SelectItem>
+                          <SelectItem value="female">Female</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="race">Race</Label>
+                      <Select value={gfrInputs.race} onValueChange={(value) => setGfrInputs({ ...gfrInputs, race: value })}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select race" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="black">Black</SelectItem>
+                          <SelectItem value="other">Other</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  <Button
+                    className="w-full bg-gradient-to-r from-green-500 via-emerald-500 to-teal-500 hover:from-green-600 hover:via-emerald-600 hover:to-teal-600 text-white font-semibold py-2 px-4 rounded-lg shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300 ease-in-out"
+                    onClick={calculateGFR}
+                  >
+                    Calculate GFR (CKD-EPI)
+                  </Button>
+                  <div className="p-4 bg-muted rounded-lg">
+                    <p className="text-sm text-muted-foreground">eGFR: <span className="font-bold text-foreground">{gfrResult.egfr || '--'} mL/min/1.73mÂ²</span></p>
+                    <p className="text-xs text-muted-foreground mt-1">Stage: {gfrResult.stage || '--'}</p>
+                  </div>
+                </TabsContent>
 
-                 <TabsContent value="fluid" className="space-y-4 mt-4">
-                   <div className="grid grid-cols-2 gap-4">
-                     <div className="space-y-2">
-                       <Label htmlFor="weight-fluid">Weight (kg)</Label>
-                       <Input
-                         id="weight-fluid"
-                         type="number"
-                         placeholder="70"
-                         value={fluidInputs.weight}
-                         onChange={(e) => setFluidInputs({...fluidInputs, weight: e.target.value})}
-                       />
-                     </div>
-                     <div className="space-y-2">
-                       <Label htmlFor="maintenance-type">Type</Label>
-                       <Select value={fluidInputs.type} onValueChange={(value) => setFluidInputs({...fluidInputs, type: value})}>
-                         <SelectTrigger>
-                           <SelectValue placeholder="Select type" />
-                         </SelectTrigger>
-                         <SelectContent>
-                           <SelectItem value="maintenance">Maintenance</SelectItem>
-                           <SelectItem value="replacement">Fluid Replacement</SelectItem>
-                         </SelectContent>
-                       </Select>
-                     </div>
-                   </div>
-                   <Button
-                     className="w-full bg-gradient-to-r from-green-500 via-emerald-500 to-teal-500 hover:from-green-600 hover:via-emerald-600 hover:to-teal-600 text-white font-semibold py-2 px-4 rounded-lg shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300 ease-in-out"
-                     onClick={calculateFluid}
-                   >
-                     Calculate Fluid Requirements
-                   </Button>
-                   <div className="p-4 bg-muted rounded-lg">
-                     <p className="text-sm text-muted-foreground">Daily Fluid: <span className="font-bold text-foreground">{fluidResult.daily || '--'} mL/day</span></p>
-                     <p className="text-xs text-muted-foreground mt-1">Hourly Rate: {fluidResult.hourly || '--'} mL/hr</p>
-                   </div>
-                 </TabsContent>
+                <TabsContent value="fluid" className="space-y-4 mt-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="weight-fluid">Weight (kg)</Label>
+                      <Input
+                        id="weight-fluid"
+                        type="number"
+                        placeholder="70"
+                        value={fluidInputs.weight}
+                        onChange={(e) => setFluidInputs({ ...fluidInputs, weight: e.target.value })}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="maintenance-type">Type</Label>
+                      <Select value={fluidInputs.type} onValueChange={(value) => setFluidInputs({ ...fluidInputs, type: value })}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select type" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="maintenance">Maintenance</SelectItem>
+                          <SelectItem value="replacement">Fluid Replacement</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  <Button
+                    className="w-full bg-gradient-to-r from-green-500 via-emerald-500 to-teal-500 hover:from-green-600 hover:via-emerald-600 hover:to-teal-600 text-white font-semibold py-2 px-4 rounded-lg shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300 ease-in-out"
+                    onClick={calculateFluid}
+                  >
+                    Calculate Fluid Requirements
+                  </Button>
+                  <div className="p-4 bg-muted rounded-lg">
+                    <p className="text-sm text-muted-foreground">Daily Fluid: <span className="font-bold text-foreground">{fluidResult.daily || '--'} mL/day</span></p>
+                    <p className="text-xs text-muted-foreground mt-1">Hourly Rate: {fluidResult.hourly || '--'} mL/hr</p>
+                  </div>
+                </TabsContent>
 
-                 <TabsContent value="dose" className="space-y-4 mt-4">
-                   <div className="grid grid-cols-2 gap-4">
-                     <div className="space-y-2">
-                       <Label htmlFor="desired-dose">Desired Dose (mg)</Label>
-                       <Input
-                         id="desired-dose"
-                         type="number"
-                         placeholder="500"
-                         value={doseInputs.desiredDose}
-                         onChange={(e) => setDoseInputs({...doseInputs, desiredDose: e.target.value})}
-                       />
-                     </div>
-                     <div className="space-y-2">
-                       <Label htmlFor="concentration">Concentration (mg/mL)</Label>
-                       <Input
-                         id="concentration"
-                         type="number"
-                         placeholder="250"
-                         value={doseInputs.concentration}
-                         onChange={(e) => setDoseInputs({...doseInputs, concentration: e.target.value})}
-                       />
-                     </div>
-                     <div className="space-y-2">
-                       <Label htmlFor="volume">Volume (mL)</Label>
-                       <Input
-                         id="volume"
-                         type="number"
-                         placeholder="2"
-                         value={doseInputs.volume}
-                         onChange={(e) => setDoseInputs({...doseInputs, volume: e.target.value})}
-                       />
-                     </div>
-                   </div>
-                   <Button
-                     className="w-full bg-gradient-to-r from-green-500 via-emerald-500 to-teal-500 hover:from-green-600 hover:via-emerald-600 hover:to-teal-600 text-white font-semibold py-2 px-4 rounded-lg shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300 ease-in-out"
-                     onClick={calculateDose}
-                   >
-                     Calculate Dose
-                   </Button>
-                   <div className="p-4 bg-muted rounded-lg">
-                     <p className="text-sm text-muted-foreground">Total Dose: <span className="font-bold text-foreground">{doseResult.totalDose || '--'} mg</span></p>
-                     <p className="text-xs text-muted-foreground mt-1">Concentration: {doseResult.concentration || '--'} mg/mL</p>
-                   </div>
-                 </TabsContent>
-               </Tabs>
-             </CardContent>
-           </Card>
+                <TabsContent value="dose" className="space-y-4 mt-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="desired-dose">Desired Dose (mg)</Label>
+                      <Input
+                        id="desired-dose"
+                        type="number"
+                        placeholder="500"
+                        value={doseInputs.desiredDose}
+                        onChange={(e) => setDoseInputs({ ...doseInputs, desiredDose: e.target.value })}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="concentration">Concentration (mg/mL)</Label>
+                      <Input
+                        id="concentration"
+                        type="number"
+                        placeholder="250"
+                        value={doseInputs.concentration}
+                        onChange={(e) => setDoseInputs({ ...doseInputs, concentration: e.target.value })}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="volume">Volume (mL)</Label>
+                      <Input
+                        id="volume"
+                        type="number"
+                        placeholder="2"
+                        value={doseInputs.volume}
+                        onChange={(e) => setDoseInputs({ ...doseInputs, volume: e.target.value })}
+                      />
+                    </div>
+                  </div>
+                  <Button
+                    className="w-full bg-gradient-to-r from-green-500 via-emerald-500 to-teal-500 hover:from-green-600 hover:via-emerald-600 hover:to-teal-600 text-white font-semibold py-2 px-4 rounded-lg shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300 ease-in-out"
+                    onClick={calculateDose}
+                  >
+                    Calculate Dose
+                  </Button>
+                  <div className="p-4 bg-muted rounded-lg">
+                    <p className="text-sm text-muted-foreground">Total Dose: <span className="font-bold text-foreground">{doseResult.totalDose || '--'} mg</span></p>
+                    <p className="text-xs text-muted-foreground mt-1">Concentration: {doseResult.concentration || '--'} mg/mL</p>
+                  </div>
+                </TabsContent>
+              </Tabs>
+            </CardContent>
+          </Card>
 
-           {/* Medical Reference Tools */}
-           <div className="grid gap-6 md:grid-cols-2">
-             <Card className="gradient-card shadow-lg">
-               <CardHeader>
-                 <CardTitle className="flex items-center gap-3">
-                   <FileText className="h-5 w-5" />
-                   <span className="gradient-text">Medical References</span>
-                 </CardTitle>
-               </CardHeader>
-               <CardContent>
-                 <div className="space-y-3">
-                   <Button
-                     variant="outline"
-                     className="w-full justify-start bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-200 hover:from-blue-100 hover:to-indigo-100 hover:border-blue-300 hover:shadow-lg transform hover:scale-102 transition-all duration-300 ease-in-out"
-                     onClick={() => openReferenceModal('lab-values')}
-                   >
-                     📚 Normal Lab Values Reference
-                   </Button>
-                   <Button
-                     variant="outline"
-                     className="w-full justify-start bg-gradient-to-r from-green-50 to-emerald-50 border-green-200 hover:from-green-100 hover:to-emerald-100 hover:border-green-300 hover:shadow-lg transform hover:scale-102 transition-all duration-300 ease-in-out"
-                     onClick={() => openReferenceModal('drug-dosage')}
-                   >
-                     💊 Drug Dosage Guidelines
-                   </Button>
-                   <Button
-                     variant="outline"
-                     className="w-full justify-start bg-gradient-to-r from-red-50 to-pink-50 border-red-200 hover:from-red-100 hover:to-pink-100 hover:border-red-300 hover:shadow-lg transform hover:scale-102 transition-all duration-300 ease-in-out"
-                     onClick={() => openReferenceModal('vital-signs')}
-                   >
-                     🩺 Vital Signs Reference
-                   </Button>
-                   <Button
-                     variant="outline"
-                     className="w-full justify-start bg-gradient-to-r from-purple-50 to-violet-50 border-purple-200 hover:from-purple-100 hover:to-violet-100 hover:border-purple-300 hover:shadow-lg transform hover:scale-102 transition-all duration-300 ease-in-out"
-                     onClick={() => openReferenceModal('abbreviations')}
-                   >
-                     🏥 Medical Abbreviations
-                   </Button>
-                 </div>
-               </CardContent>
-             </Card>
+          {/* Medical Reference Tools */}
+          <div className="grid gap-6 md:grid-cols-2">
+            <Card className="gradient-card shadow-lg">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-3">
+                  <FileText className="h-5 w-5" />
+                  <span className="gradient-text">Medical References</span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  <Button
+                    variant="outline"
+                    className="w-full justify-start bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-200 hover:from-blue-100 hover:to-indigo-100 hover:border-blue-300 hover:shadow-lg transform hover:scale-102 transition-all duration-300 ease-in-out"
+                    onClick={() => openReferenceModal('lab-values')}
+                  >
+                    ðŸ“š Normal Lab Values Reference
+                  </Button>
+                  <Button
+                    variant="outline"
+                    className="w-full justify-start bg-gradient-to-r from-green-50 to-emerald-50 border-green-200 hover:from-green-100 hover:to-emerald-100 hover:border-green-300 hover:shadow-lg transform hover:scale-102 transition-all duration-300 ease-in-out"
+                    onClick={() => openReferenceModal('drug-dosage')}
+                  >
+                    ðŸ’Š Drug Dosage Guidelines
+                  </Button>
+                  <Button
+                    variant="outline"
+                    className="w-full justify-start bg-gradient-to-r from-red-50 to-pink-50 border-red-200 hover:from-red-100 hover:to-pink-100 hover:border-red-300 hover:shadow-lg transform hover:scale-102 transition-all duration-300 ease-in-out"
+                    onClick={() => openReferenceModal('vital-signs')}
+                  >
+                    ðŸ©º Vital Signs Reference
+                  </Button>
+                  <Button
+                    variant="outline"
+                    className="w-full justify-start bg-gradient-to-r from-purple-50 to-violet-50 border-purple-200 hover:from-purple-100 hover:to-violet-100 hover:border-purple-300 hover:shadow-lg transform hover:scale-102 transition-all duration-300 ease-in-out"
+                    onClick={() => openReferenceModal('abbreviations')}
+                  >
+                    ðŸ¥ Medical Abbreviations
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
 
-             <Card className="gradient-card shadow-lg">
-               <CardHeader>
-                 <CardTitle className="flex items-center gap-3">
-                   <BarChart3 className="h-5 w-5" />
-                   <span className="gradient-text">Unit Converters</span>
-                 </CardTitle>
-               </CardHeader>
-               <CardContent>
-                 <div className="space-y-3">
-                   <div className="grid grid-cols-2 gap-2">
-                     <Input
-                       placeholder="Value"
-                       value={converterInputs.value}
-                       onChange={(e) => setConverterInputs({...converterInputs, value: e.target.value})}
-                     />
-                     <Select
-                       value={converterInputs.fromUnit}
-                       onValueChange={(value) => setConverterInputs({...converterInputs, fromUnit: value})}
-                     >
-                       <SelectTrigger>
-                         <SelectValue placeholder="From" />
-                       </SelectTrigger>
-                       <SelectContent>
-                         <SelectItem value="mg-dl">mg/dL</SelectItem>
-                         <SelectItem value="mmol-l">mmol/L</SelectItem>
-                         <SelectItem value="g-l">g/L</SelectItem>
-                       </SelectContent>
-                     </Select>
-                   </div>
-                   <div className="grid grid-cols-2 gap-2">
-                     <div className="text-center p-2 bg-muted rounded text-sm font-medium">
-                       {converterResult || 'Result'}
-                     </div>
-                     <Select
-                       value={converterInputs.toUnit}
-                       onValueChange={(value) => setConverterInputs({...converterInputs, toUnit: value})}
-                     >
-                       <SelectTrigger>
-                         <SelectValue placeholder="To" />
-                       </SelectTrigger>
-                       <SelectContent>
-                         <SelectItem value="mg-dl">mg/dL</SelectItem>
-                         <SelectItem value="mmol-l">mmol/L</SelectItem>
-                         <SelectItem value="g-l">g/L</SelectItem>
-                       </SelectContent>
-                     </Select>
-                   </div>
-                   <Button
-                     className="w-full bg-gradient-to-r from-green-500 via-emerald-500 to-teal-500 hover:from-green-600 hover:via-emerald-600 hover:to-teal-600 text-white font-semibold py-2 px-4 rounded-lg shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300 ease-in-out"
-                     onClick={convertUnits}
-                   >
-                     Convert
-                   </Button>
-                 </div>
-               </CardContent>
-             </Card>
-           </div>
+            <Card className="gradient-card shadow-lg">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-3">
+                  <BarChart3 className="h-5 w-5" />
+                  <span className="gradient-text">Unit Converters</span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  <div className="grid grid-cols-2 gap-2">
+                    <Input
+                      placeholder="Value"
+                      value={converterInputs.value}
+                      onChange={(e) => setConverterInputs({ ...converterInputs, value: e.target.value })}
+                    />
+                    <Select
+                      value={converterInputs.fromUnit}
+                      onValueChange={(value) => setConverterInputs({ ...converterInputs, fromUnit: value })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="From" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="mg-dl">mg/dL</SelectItem>
+                        <SelectItem value="mmol-l">mmol/L</SelectItem>
+                        <SelectItem value="g-l">g/L</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="text-center p-2 bg-muted rounded text-sm font-medium">
+                      {converterResult || 'Result'}
+                    </div>
+                    <Select
+                      value={converterInputs.toUnit}
+                      onValueChange={(value) => setConverterInputs({ ...converterInputs, toUnit: value })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="To" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="mg-dl">mg/dL</SelectItem>
+                        <SelectItem value="mmol-l">mmol/L</SelectItem>
+                        <SelectItem value="g-l">g/L</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <Button
+                    className="w-full bg-gradient-to-r from-green-500 via-emerald-500 to-teal-500 hover:from-green-600 hover:via-emerald-600 hover:to-teal-600 text-white font-semibold py-2 px-4 rounded-lg shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300 ease-in-out"
+                    onClick={convertUnits}
+                  >
+                    Convert
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
 
-           {/* Data Analytics Dashboard */}
-           <Card className="gradient-card shadow-lg">
-             <CardHeader>
-               <CardTitle className="flex items-center gap-3">
-                 <BarChart3 className="h-5 w-5" />
-                 <span className="gradient-text">Data Analytics Dashboard</span>
-               </CardTitle>
-               <CardDescription>Real-time insights and analytics from patient data</CardDescription>
-             </CardHeader>
-             <CardContent>
-               <div className="grid gap-6 md:grid-cols-2">
-                 {/* Age Distribution */}
-                 <Card className="gradient-card">
-                   <CardHeader className="pb-3">
-                     <CardTitle className="text-base flex items-center gap-2">
-                       <Users className="h-4 w-4" />
-                       Patient Age Distribution
-                     </CardTitle>
-                   </CardHeader>
-                   <CardContent>
-                     <div className="h-48">
-                       <ResponsiveContainer width="100%" height="100%">
-                         <BarChart data={
-                           (() => {
-                             const ageGroups = { '18-30': 0, '31-45': 0, '46-60': 0, '61-75': 0, '76+': 0 }
-                             patientAnalyses.forEach(analysis => {
-                               if (analysis.birth_date) {
-                                 const age = new Date().getFullYear() - new Date(analysis.birth_date).getFullYear()
-                                 if (age <= 30) ageGroups['18-30']++
-                                 else if (age <= 45) ageGroups['31-45']++
-                                 else if (age <= 60) ageGroups['46-60']++
-                                 else if (age <= 75) ageGroups['61-75']++
-                                 else ageGroups['76+']++
-                               }
-                             })
-                             return Object.entries(ageGroups).map(([range, count]) => ({ range, count }))
-                           })()
+          {/* Data Analytics Dashboard */}
+          <Card className="gradient-card shadow-lg">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-3">
+                <BarChart3 className="h-5 w-5" />
+                <span className="gradient-text">Data Analytics Dashboard</span>
+              </CardTitle>
+              <CardDescription>Real-time insights and analytics from patient data</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid gap-6 md:grid-cols-2">
+                {/* Age Distribution */}
+                <Card className="gradient-card">
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-base flex items-center gap-2">
+                      <Users className="h-4 w-4" />
+                      Patient Age Distribution
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="h-48">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <BarChart data={
+                          (() => {
+                            const ageGroups = { '18-30': 0, '31-45': 0, '46-60': 0, '61-75': 0, '76+': 0 }
+                            patientAnalyses.forEach(analysis => {
+                              if (analysis.birth_date) {
+                                const age = new Date().getFullYear() - new Date(analysis.birth_date).getFullYear()
+                                if (age <= 30) ageGroups['18-30']++
+                                else if (age <= 45) ageGroups['31-45']++
+                                else if (age <= 60) ageGroups['46-60']++
+                                else if (age <= 75) ageGroups['61-75']++
+                                else ageGroups['76+']++
+                              }
+                            })
+                            return Object.entries(ageGroups).map(([range, count]) => ({ range, count }))
+                          })()
                         }>
                           <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e0e0e0" />
                           <XAxis dataKey="range" stroke="#ccc" tickLine={{ stroke: '#ccc' }} style={{ fontSize: '12px', fill: '#666', fontWeight: 'bold' }} />
@@ -2311,34 +2622,34 @@ export function AdvancedReports({ className }: AdvancedReportsProps) {
                           <Tooltip cursor={{ fill: 'rgba(0,0,0,0.05)' }} contentStyle={{ borderRadius: '8px', border: '1px solid #e0e0e0', boxShadow: '0 4px 12px rgba(0,0,0,0.1)', backgroundColor: '#fff' }} labelStyle={{ fontWeight: 'bold', color: '#333' }} itemStyle={{ color: '#555' }} />
                           <Bar dataKey="count" fill="#4299e1" radius={[4, 4, 0, 0]} />
                         </BarChart>
-                       </ResponsiveContainer>
-                     </div>
-                   </CardContent>
-                 </Card>
+                      </ResponsiveContainer>
+                    </div>
+                  </CardContent>
+                </Card>
 
-                 {/* Diagnosis Confidence Distribution */}
-                 <Card className="gradient-card">
-                   <CardHeader className="pb-3">
-                     <CardTitle className="text-base flex items-center gap-2">
-                       <Activity className="h-4 w-4" />
-                       Diagnosis Confidence Levels
-                     </CardTitle>
-                   </CardHeader>
-                   <CardContent>
-                     <div className="h-48">
-                       <ResponsiveContainer width="100%" height="100%">
-                         <BarChart data={
-                           (() => {
-                             const confidenceGroups = { '90-100%': 0, '80-89%': 0, '70-79%': 0, '60-69%': 0, '<60%': 0 }
-                             patientAnalyses.forEach(analysis => {
-                               if (analysis.confidence >= 90) confidenceGroups['90-100%']++
-                               else if (analysis.confidence >= 80) confidenceGroups['80-89%']++
-                               else if (analysis.confidence >= 70) confidenceGroups['70-79%']++
-                               else if (analysis.confidence >= 60) confidenceGroups['60-69%']++
-                               else confidenceGroups['<60%']++
-                             })
-                             return Object.entries(confidenceGroups).map(([range, count]) => ({ range, count }))
-                           })()
+                {/* Diagnosis Confidence Distribution */}
+                <Card className="gradient-card">
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-base flex items-center gap-2">
+                      <Activity className="h-4 w-4" />
+                      Diagnosis Confidence Levels
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="h-48">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <BarChart data={
+                          (() => {
+                            const confidenceGroups = { '90-100%': 0, '80-89%': 0, '70-79%': 0, '60-69%': 0, '<60%': 0 }
+                            patientAnalyses.forEach(analysis => {
+                              if (analysis.confidence >= 90) confidenceGroups['90-100%']++
+                              else if (analysis.confidence >= 80) confidenceGroups['80-89%']++
+                              else if (analysis.confidence >= 70) confidenceGroups['70-79%']++
+                              else if (analysis.confidence >= 60) confidenceGroups['60-69%']++
+                              else confidenceGroups['<60%']++
+                            })
+                            return Object.entries(confidenceGroups).map(([range, count]) => ({ range, count }))
+                          })()
                         }>
                           <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e0e0e0" />
                           <XAxis dataKey="range" stroke="#ccc" tickLine={{ stroke: '#ccc' }} style={{ fontSize: '12px', fill: '#666', fontWeight: 'bold' }} />
@@ -2346,30 +2657,30 @@ export function AdvancedReports({ className }: AdvancedReportsProps) {
                           <Tooltip cursor={{ fill: 'rgba(0,0,0,0.05)' }} contentStyle={{ borderRadius: '8px', border: '1px solid #e0e0e0', boxShadow: '0 4px 12px rgba(0,0,0,0.1)', backgroundColor: '#fff' }} labelStyle={{ fontWeight: 'bold', color: '#333' }} itemStyle={{ color: '#555' }} />
                           <Bar dataKey="count" fill="#48bb78" radius={[4, 4, 0, 0]} />
                         </BarChart>
-                       </ResponsiveContainer>
-                     </div>
-                   </CardContent>
-                 </Card>
+                      </ResponsiveContainer>
+                    </div>
+                  </CardContent>
+                </Card>
 
-                 {/* Appointment Types */}
-                 <Card className="gradient-card">
-                   <CardHeader className="pb-3">
-                     <CardTitle className="text-base flex items-center gap-2">
-                       <CalendarIcon className="h-4 w-4" />
-                       Appointment Types Distribution
-                     </CardTitle>
-                   </CardHeader>
-                   <CardContent>
-                     <div className="h-48">
-                       <ResponsiveContainer width="100%" height="100%">
-                         <BarChart data={
-                           (() => {
-                             const typeCount: { [key: string]: number } = {}
-                             upcomingAppointments.forEach(apt => {
-                               typeCount[apt.type] = (typeCount[apt.type] || 0) + 1
-                             })
-                             return Object.entries(typeCount).map(([type, count]) => ({ type, count }))
-                           })()
+                {/* Appointment Types */}
+                <Card className="gradient-card">
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-base flex items-center gap-2">
+                      <CalendarIcon className="h-4 w-4" />
+                      Appointment Types Distribution
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="h-48">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <BarChart data={
+                          (() => {
+                            const typeCount: { [key: string]: number } = {}
+                            upcomingAppointments.forEach(apt => {
+                              typeCount[apt.type] = (typeCount[apt.type] || 0) + 1
+                            })
+                            return Object.entries(typeCount).map(([type, count]) => ({ type, count }))
+                          })()
                         }>
                           <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e0e0e0" />
                           <XAxis dataKey="type" height={40} stroke="#ccc" tickLine={{ stroke: '#ccc' }} style={{ fontSize: '12px', fill: '#333', fontWeight: 'bold' }} />
@@ -2377,48 +2688,48 @@ export function AdvancedReports({ className }: AdvancedReportsProps) {
                           <Tooltip cursor={{ fill: 'rgba(0,0,0,0.05)' }} contentStyle={{ borderRadius: '8px', border: '1px solid #e0e0e0', boxShadow: '0 4px 12px rgba(0,0,0,0.1)', backgroundColor: '#fff' }} labelStyle={{ fontWeight: 'bold', color: '#333' }} itemStyle={{ color: '#555' }} />
                           <Bar dataKey="count" fill="#ed8936" radius={[4, 4, 0, 0]} />
                         </BarChart>
-                       </ResponsiveContainer>
-                     </div>
-                   </CardContent>
-                 </Card>
+                      </ResponsiveContainer>
+                    </div>
+                  </CardContent>
+                </Card>
 
-                 {/* Case Status Distribution */}
-                 <Card className="gradient-card">
-                   <CardHeader className="pb-3">
-                     <CardTitle className="text-base flex items-center gap-2">
-                       <TrendingUp className="h-4 w-4" />
-                       Active Cases Status
-                     </CardTitle>
-                   </CardHeader>
-                   <CardContent>
-                     <div className="h-48">
-                       <ResponsiveContainer width="100%" height="100%">
-                         <BarChart data={
-                           (() => {
-                             const statusCount: { [key: string]: number } = { active: 0, critical: 0, recovery: 0, pending_review: 0, finished: 0 }
-                              activeCases.forEach(case_ => {
-                                statusCount[case_.status]++
-                              })
-                              return Object.entries(statusCount).map(([status, count]) => ({
-                                status: status.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase()),
-                                count
-                              }))
-                            })()
-                         }>
-                           <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e0e0e0" />
-                           <XAxis dataKey="status" height={40} stroke="#ccc" tickLine={{ stroke: '#ccc' }} style={{ fontSize: '12px', fill: '#333', fontWeight: 'bold' }} />
-                           <YAxis stroke="#ccc" tickLine={{ stroke: '#ccc' }} style={{ fontSize: '12px', fill: '#666', fontWeight: 'bold' }} />
-                           <Tooltip cursor={{ fill: 'rgba(0,0,0,0.05)' }} contentStyle={{ borderRadius: '8px', border: '1px solid #e0e0e0', boxShadow: '0 4px 12px rgba(0,0,0,0.1)', backgroundColor: '#fff' }} labelStyle={{ fontWeight: 'bold', color: '#333' }} itemStyle={{ color: '#555' }} />
-                           <Bar dataKey="count" fill="#667eea" radius={[4, 4, 0, 0]} />
-                         </BarChart>
-                       </ResponsiveContainer>
-                     </div>
-                   </CardContent>
-                 </Card>
-               </div>
-             </CardContent>
-           </Card>
-         </TabsContent>
+                {/* Case Status Distribution */}
+                <Card className="gradient-card">
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-base flex items-center gap-2">
+                      <TrendingUp className="h-4 w-4" />
+                      Active Cases Status
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="h-48">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <BarChart data={
+                          (() => {
+                            const statusCount: { [key: string]: number } = { active: 0, critical: 0, recovery: 0, pending_review: 0, finished: 0 }
+                            activeCases.forEach(case_ => {
+                              statusCount[case_.status]++
+                            })
+                            return Object.entries(statusCount).map(([status, count]) => ({
+                              status: status.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase()),
+                              count
+                            }))
+                          })()
+                        }>
+                          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e0e0e0" />
+                          <XAxis dataKey="status" height={40} stroke="#ccc" tickLine={{ stroke: '#ccc' }} style={{ fontSize: '12px', fill: '#333', fontWeight: 'bold' }} />
+                          <YAxis stroke="#ccc" tickLine={{ stroke: '#ccc' }} style={{ fontSize: '12px', fill: '#666', fontWeight: 'bold' }} />
+                          <Tooltip cursor={{ fill: 'rgba(0,0,0,0.05)' }} contentStyle={{ borderRadius: '8px', border: '1px solid #e0e0e0', boxShadow: '0 4px 12px rgba(0,0,0,0.1)', backgroundColor: '#fff' }} labelStyle={{ fontWeight: 'bold', color: '#333' }} itemStyle={{ color: '#555' }} />
+                          <Bar dataKey="count" fill="#667eea" radius={[4, 4, 0, 0]} />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
 
         <TabsContent value="departments" className="space-y-6">
           <div className="grid gap-6 md:grid-cols-2">
@@ -2482,431 +2793,429 @@ export function AdvancedReports({ className }: AdvancedReportsProps) {
         </TabsContent>
 
         <TabsContent value="ongoing-cases" className="space-y-6">
-            {/* Active Cases */}
-            <Card className="gradient-card shadow-lg">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-3">
-                  <Stethoscope className="h-5 w-5" />
-                  <span className="gradient-text">Active Cases</span>
-                </CardTitle>
-                <CardDescription>Real-time patient cases from analysis data</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="flex justify-between items-center mb-4">
-                  <div className="text-sm text-muted-foreground">
-                    {activeCases.length} active cases
-                  </div>
-                  <Select value={casesFilter} onValueChange={setCasesFilter}>
-                    <SelectTrigger className="w-48">
-                      <SelectValue placeholder="Filter by status" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Cases</SelectItem>
-                      <SelectItem value="active">Active</SelectItem>
-                      <SelectItem value="critical">Critical</SelectItem>
-                      <SelectItem value="recovery">Recovery</SelectItem>
-                      <SelectItem value="pending_review">Pending Review</SelectItem>
-                      <SelectItem value="finished">Finished</SelectItem>
-                    </SelectContent>
-                  </Select>
+          {/* Active Cases */}
+          <Card className="gradient-card shadow-lg">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-3">
+                <Stethoscope className="h-5 w-5" />
+                <span className="gradient-text">Active Cases</span>
+              </CardTitle>
+              <CardDescription>Real-time patient cases from analysis data</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="flex justify-between items-center mb-4">
+                <div className="text-sm text-muted-foreground">
+                  {activeCases.length} active cases
                 </div>
-                <div className={activeCases.length > 2 ? "overflow-y-auto max-h-[400px] pr-2" : ""}>
-                  <div className="space-y-3">
-                    {activeCases
-                      .filter(c => casesFilter === 'all' || c.status === casesFilter)
-                      .map((case_) => (
-                        <div key={case_.id} className="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-lg transition-all duration-200 hover:border-gray-300">
-                           {/* Header with patient info and actions */}
-                           <div className="flex items-center justify-between mb-3">
-                             <div className="flex items-center gap-3">
-                               <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold text-sm overflow-hidden">
-                                 {case_.profilePicture ? (
-                                   <img
-                                     src={case_.profilePicture}
-                                     alt={`${case_.patientName} profile`}
-                                     className="w-10 h-10 rounded-full object-cover"
-                                   />
-                                 ) : (
-                                   case_.patientName[0].toUpperCase()
-                                 )}
-                               </div>
-                               <div className="min-w-0 flex-1">
-                                 <h3 className="font-semibold text-gray-900 text-base truncate">{case_.patientName}</h3>
-                                 <p className="text-sm text-gray-600 truncate">{case_.diagnosis}</p>
-                                 <p className="text-xs text-gray-500">ID: {case_.patientId}</p>
-                               </div>
-                             </div>
-                             <div className="flex gap-1 ml-2">
-                               <Button
-                                 size="sm"
-                                 variant="outline"
-                                 className="text-blue-600 border-blue-200 hover:bg-blue-50 h-8 px-2"
-                                 onClick={() => viewCaseDetails(case_)}
-                               >
-                                 <Eye className="h-3 w-3" />
-                               </Button>
-                               {case_.status !== 'finished' && (
-                                 <Button
-                                   size="sm"
-                                   variant="outline"
-                                   className="text-green-600 border-green-200 hover:bg-green-50 h-8 px-2"
-                                   onClick={() => updateCaseProgress(case_)}
-                                 >
-                                   <Edit className="h-3 w-3" />
-                                 </Button>
-                               )}
-                               <Button
-                                 size="sm"
-                                 variant="outline"
-                                 className="text-red-600 border-red-200 hover:bg-red-50 h-8 px-2"
-                                 onClick={() => deleteCase(case_.id)}
-                               >
-                                 <Trash2 className="h-3 w-3" />
-                               </Button>
-                             </div>
-                           </div>
+                <Select value={casesFilter} onValueChange={setCasesFilter}>
+                  <SelectTrigger className="w-48">
+                    <SelectValue placeholder="Filter by status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Cases</SelectItem>
+                    <SelectItem value="active">Active</SelectItem>
+                    <SelectItem value="critical">Critical</SelectItem>
+                    <SelectItem value="recovery">Recovery</SelectItem>
+                    <SelectItem value="pending_review">Pending Review</SelectItem>
+                    <SelectItem value="finished">Finished</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className={activeCases.length > 2 ? "overflow-y-auto max-h-[400px] pr-2" : ""}>
+                <div className="space-y-3">
+                  {activeCases
+                    .filter(c => casesFilter === 'all' || c.status === casesFilter)
+                    .map((case_) => (
+                      <div key={case_.id} className="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-lg transition-all duration-200 hover:border-gray-300">
+                        {/* Header with patient info and actions */}
+                        <div className="flex items-center justify-between mb-3">
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold text-sm overflow-hidden">
+                              {case_.profilePicture ? (
+                                <img
+                                  src={case_.profilePicture}
+                                  alt={`${case_.patientName} profile`}
+                                  className="w-10 h-10 rounded-full object-cover"
+                                />
+                              ) : (
+                                case_.patientName[0].toUpperCase()
+                              )}
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <h3 className="font-semibold text-gray-900 text-base truncate">{case_.patientName}</h3>
+                              <p className="text-sm text-gray-600 truncate">{case_.diagnosis}</p>
+                              <p className="text-xs text-gray-500">ID: {case_.patientId}</p>
+                            </div>
+                          </div>
+                          <div className="flex gap-1 ml-2">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="text-blue-600 border-blue-200 hover:bg-blue-50 h-8 px-2"
+                              onClick={() => viewCaseDetails(case_)}
+                            >
+                              <Eye className="h-3 w-3" />
+                            </Button>
+                            {case_.status !== 'finished' && (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="text-green-600 border-green-200 hover:bg-green-50 h-8 px-2"
+                                onClick={() => updateCaseProgress(case_)}
+                              >
+                                <Edit className="h-3 w-3" />
+                              </Button>
+                            )}
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="text-red-600 border-red-200 hover:bg-red-50 h-8 px-2"
+                              onClick={() => deleteCase(case_.id)}
+                            >
+                              <Trash2 className="h-3 w-3" />
+                            </Button>
+                          </div>
+                        </div>
 
-                          {/* Case details in compact grid */}
+                        {/* Case details in compact grid */}
+                        <div className="grid grid-cols-2 gap-4 mb-3">
+                          <div className="flex items-start gap-2">
+                            <Activity className="h-4 w-4 text-gray-400 mt-0.5 flex-shrink-0" />
+                            <div className="min-w-0">
+                              <div className="text-xs font-medium text-gray-700">Status</div>
+                              <Badge variant="outline" className={`text-xs px-2 py-0.5 mt-1 ${case_.status === 'critical' ? 'border-red-200 text-red-800 bg-red-50' :
+                                case_.status === 'active' ? 'border-blue-200 text-blue-800 bg-blue-50' :
+                                  case_.status === 'recovery' ? 'border-green-200 text-green-800 bg-green-50' :
+                                    case_.status === 'finished' ? 'border-purple-200 text-purple-800 bg-purple-50' :
+                                      'border-yellow-200 text-yellow-800 bg-yellow-50'
+                                }`}>
+                                {case_.status.replace('_', ' ')}
+                              </Badge>
+                            </div>
+                          </div>
+
+                          <div className="flex items-start gap-2">
+                            <TrendingUp className="h-4 w-4 text-gray-400 mt-0.5 flex-shrink-0" />
+                            <div className="min-w-0">
+                              <div className="text-xs font-medium text-gray-700">Progress</div>
+                              <div className="text-sm text-gray-900 mt-1">{Math.round(case_.treatmentProgress)}%</div>
+                            </div>
+                          </div>
+
+                          <div className="flex items-start gap-2">
+                            <CalendarIcon className="h-4 w-4 text-gray-400 mt-0.5 flex-shrink-0" />
+                            <div className="min-w-0">
+                              <div className="text-xs font-medium text-gray-700">Last Update</div>
+                              <div className="text-sm text-gray-900">{case_.lastUpdate.toLocaleDateString()}</div>
+                              <div className="text-xs text-gray-600">{case_.lastUpdate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
+                            </div>
+                          </div>
+
+                          <div className="flex items-start gap-2">
+                            <Users className="h-4 w-4 text-gray-400 mt-0.5 flex-shrink-0" />
+                            <div className="min-w-0">
+                              <div className="text-xs font-medium text-gray-700">Doctor</div>
+                              <div className="text-sm text-gray-900 truncate">
+                                {case_.assignedDoctor}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Alerts section */}
+                        {case_.alerts.length > 0 && (
+                          <div className="pt-3 border-t border-gray-100">
+                            <div className="bg-red-50 rounded-md p-3 border border-red-100">
+                              <div className="flex items-start gap-2">
+                                <AlertCircle className="h-4 w-4 text-red-500 mt-0.5 flex-shrink-0" />
+                                <div className="flex-1 min-w-0">
+                                  <div className="text-xs font-semibold text-red-700 mb-1">Alerts</div>
+                                  <div className="space-y-1">
+                                    {case_.alerts.map((alert, index) => (
+                                      <div key={index} className="text-sm text-red-700 leading-tight">{alert}</div>
+                                    ))}
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Notes section - similar to Appointments */}
+                        {case_.notes && (
+                          <div className="pt-3 border-t border-gray-100">
+                            <div className="bg-blue-50 rounded-md p-3 border border-blue-100">
+                              <div className="flex items-start gap-2">
+                                <FileText className="h-4 w-4 text-blue-500 mt-0.5 flex-shrink-0" />
+                                <div className="flex-1 min-w-0">
+                                  <div className="text-xs font-semibold text-blue-700 mb-1">Notes</div>
+                                  <div className="text-sm text-gray-700 leading-relaxed">{case_.notes}</div>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  {activeCases.length === 0 && (
+                    <div className="text-center py-8">
+                      <Stethoscope className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                      <p className="text-muted-foreground">No active cases found</p>
+                      <p className="text-sm text-muted-foreground/60 mt-2">
+                        Active cases will appear here when patients have analysis data
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Upcoming Appointments */}
+          <Card className="gradient-card shadow-lg">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-3">
+                <CalendarIcon className="h-5 w-5" />
+                <span className="gradient-text">Upcoming Appointments</span>
+              </CardTitle>
+              <CardDescription>Scheduled appointments and consultations linked to patient records</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {isLoadingPatients && (
+                <div className="flex items-center justify-center py-8">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                  <span className="ml-2">Loading patient data...</span>
+                </div>
+              )}
+              {!isLoadingPatients && (
+                <>
+                  <div className="flex justify-between items-center mb-4">
+                    <div className="text-sm text-muted-foreground">
+                      {filteredAppointments.length} upcoming appointments
+                    </div>
+                    <div className="flex gap-2">
+                      <div className="relative">
+                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <Input
+                          placeholder="Search by patient name, ID, or type..."
+                          value={appointmentSearchTerm}
+                          onChange={(e) => setAppointmentSearchTerm(e.target.value)}
+                          className="pl-10 w-64"
+                        />
+                      </div>
+                      <Button onClick={() => setIsAppointmentDialogOpen(true)} className="bg-gradient-to-r from-green-500 via-emerald-500 to-teal-500 hover:from-green-600 hover:via-emerald-600 hover:to-teal-600 text-white rounded-xl">
+                        <CalendarIcon className="h-4 w-4 mr-2" />
+                        Add Appointment
+                      </Button>
+                    </div>
+                  </div>
+                  <div className={filteredAppointments.length > 2 ? "overflow-y-auto max-h-[400px] pr-2 space-y-4" : "space-y-4"}>
+                    {filteredAppointments.map((appointment) => {
+                      const patient = patients.find(p => p.patient_id === appointment.patientId)
+                      return (
+                        <div key={appointment.id} className="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-lg transition-all duration-200 hover:border-gray-300">
+                          {/* Compact header with patient info and actions */}
+                          <div className="flex items-center justify-between mb-3">
+                            <div className="flex items-center gap-3">
+                              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold text-sm overflow-hidden">
+                                {(() => {
+                                  const patient = patients.find(p => p.patient_id === appointment.patientId)
+                                  return patient?.profile_picture ? (
+                                    <img
+                                      src={patient.profile_picture}
+                                      alt={`${appointment.patientName} profile`}
+                                      className="w-10 h-10 rounded-full object-cover"
+                                    />
+                                  ) : (
+                                    appointment.patientName[0].toUpperCase()
+                                  )
+                                })()}
+                              </div>
+                              <div className="min-w-0 flex-1">
+                                <h3 className="font-semibold text-gray-900 text-base truncate">{appointment.patientName}</h3>
+                                <p className="text-sm text-gray-600 truncate">{appointment.type}</p>
+                                <p className="text-xs text-gray-500">ID: {appointment.patientId}</p>
+                              </div>
+                            </div>
+                            <div className="flex gap-1 ml-2">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="text-blue-600 border-blue-200 hover:bg-blue-50 h-8 px-2"
+                                onClick={() => rescheduleAppointment(appointment.id)}
+                              >
+                                <Edit className="h-3 w-3" />
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="text-red-600 border-red-200 hover:bg-red-50 h-8 px-2"
+                                onClick={() => cancelAppointment(appointment.id)}
+                              >
+                                <Trash2 className="h-3 w-3" />
+                              </Button>
+                            </div>
+                          </div>
+
+                          {/* Compact appointment details grid */}
                           <div className="grid grid-cols-2 gap-4 mb-3">
+                            <div className="flex items-start gap-2">
+                              <CalendarIcon className="h-4 w-4 text-gray-400 mt-0.5 flex-shrink-0" />
+                              <div className="min-w-0">
+                                <div className="text-xs font-medium text-gray-700">Date & Time</div>
+                                <div className="text-sm text-gray-900 font-medium">{appointment.dateTime.toLocaleDateString()}</div>
+                                <div className="text-xs text-gray-600">
+                                  {appointment.dateTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                </div>
+                              </div>
+                            </div>
+
                             <div className="flex items-start gap-2">
                               <Activity className="h-4 w-4 text-gray-400 mt-0.5 flex-shrink-0" />
                               <div className="min-w-0">
                                 <div className="text-xs font-medium text-gray-700">Status</div>
-                                <Badge variant="outline" className={`text-xs px-2 py-0.5 mt-1 ${
-                                  case_.status === 'critical' ? 'border-red-200 text-red-800 bg-red-50' :
-                                  case_.status === 'active' ? 'border-blue-200 text-blue-800 bg-blue-50' :
-                                  case_.status === 'recovery' ? 'border-green-200 text-green-800 bg-green-50' :
-                                  case_.status === 'finished' ? 'border-purple-200 text-purple-800 bg-purple-50' :
-                                  'border-yellow-200 text-yellow-800 bg-yellow-50'
-                                }`}>
-                                  {case_.status.replace('_', ' ')}
+                                <Badge variant="outline" className={`text-xs px-2 py-0.5 mt-1 ${appointment.status === 'confirmed' ? 'border-green-200 text-green-800 bg-green-50' :
+                                  appointment.status === 'scheduled' ? 'border-blue-200 text-blue-800 bg-blue-50' :
+                                    'border-red-200 text-red-800 bg-red-50'
+                                  }`}>
+                                  {appointment.status}
                                 </Badge>
                               </div>
                             </div>
 
                             <div className="flex items-start gap-2">
-                              <TrendingUp className="h-4 w-4 text-gray-400 mt-0.5 flex-shrink-0" />
+                              <Stethoscope className="h-4 w-4 text-gray-400 mt-0.5 flex-shrink-0" />
                               <div className="min-w-0">
-                                <div className="text-xs font-medium text-gray-700">Progress</div>
-                                <div className="text-sm text-gray-900 mt-1">{Math.round(case_.treatmentProgress)}%</div>
+                                <div className="text-xs font-medium text-gray-700">Duration</div>
+                                <div className="text-sm text-gray-900">{appointment.duration} min</div>
                               </div>
                             </div>
 
                             <div className="flex items-start gap-2">
-                              <CalendarIcon className="h-4 w-4 text-gray-400 mt-0.5 flex-shrink-0" />
+                              <FileText className="h-4 w-4 text-gray-400 mt-0.5 flex-shrink-0" />
                               <div className="min-w-0">
-                                <div className="text-xs font-medium text-gray-700">Last Update</div>
-                                <div className="text-sm text-gray-900">{case_.lastUpdate.toLocaleDateString()}</div>
-                                <div className="text-xs text-gray-600">{case_.lastUpdate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
-                              </div>
-                            </div>
-
-                            <div className="flex items-start gap-2">
-                              <Users className="h-4 w-4 text-gray-400 mt-0.5 flex-shrink-0" />
-                              <div className="min-w-0">
-                                <div className="text-xs font-medium text-gray-700">Doctor</div>
-                                <div className="text-sm text-gray-900 truncate">
-                                  {case_.assignedDoctor}
-                                </div>
+                                <div className="text-xs font-medium text-gray-700">Location</div>
+                                <div className="text-sm text-gray-900 truncate">{appointment.location || 'Not specified'}</div>
                               </div>
                             </div>
                           </div>
 
-                          {/* Alerts section */}
-                          {case_.alerts.length > 0 && (
-                            <div className="pt-3 border-t border-gray-100">
-                              <div className="bg-red-50 rounded-md p-3 border border-red-100">
-                                <div className="flex items-start gap-2">
-                                  <AlertCircle className="h-4 w-4 text-red-500 mt-0.5 flex-shrink-0" />
-                                  <div className="flex-1 min-w-0">
-                                    <div className="text-xs font-semibold text-red-700 mb-1">Alerts</div>
-                                    <div className="space-y-1">
-                                      {case_.alerts.map((alert, index) => (
-                                        <div key={index} className="text-sm text-red-700 leading-tight">{alert}</div>
-                                      ))}
-                                    </div>
-                                  </div>
-                                </div>
-                              </div>
-                            </div>
-                          )}
-  
-                          {/* Notes section - similar to Appointments */}
-                          {case_.notes && (
+                          {/* Enhanced notes section */}
+                          {appointment.notes && (
                             <div className="pt-3 border-t border-gray-100">
                               <div className="bg-blue-50 rounded-md p-3 border border-blue-100">
                                 <div className="flex items-start gap-2">
                                   <FileText className="h-4 w-4 text-blue-500 mt-0.5 flex-shrink-0" />
                                   <div className="flex-1 min-w-0">
                                     <div className="text-xs font-semibold text-blue-700 mb-1">Notes</div>
-                                    <div className="text-sm text-gray-700 leading-relaxed">{case_.notes}</div>
+                                    <div className="text-sm text-gray-700 leading-relaxed">{appointment.notes}</div>
                                   </div>
                                 </div>
                               </div>
                             </div>
                           )}
                         </div>
-                      ))}
-                    {activeCases.length === 0 && (
+                      )
+                    })}
+                    {filteredAppointments.length === 0 && (
                       <div className="text-center py-8">
-                        <Stethoscope className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                        <p className="text-muted-foreground">No active cases found</p>
-                        <p className="text-sm text-muted-foreground/60 mt-2">
-                          Active cases will appear here when patients have analysis data
+                        <CalendarIcon className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                        <p className="text-muted-foreground">
+                          {appointmentSearchTerm.trim() ? 'No appointments match your search' : 'No upcoming appointments'}
                         </p>
+                        {!appointmentSearchTerm.trim() && (
+                          <p className="text-sm text-muted-foreground/60 mt-2">
+                            Click "Add Appointment" to schedule your first appointment
+                          </p>
+                        )}
                       </div>
                     )}
                   </div>
-                </div>
-              </CardContent>
-            </Card>
+                </>
+              )}
+            </CardContent>
+          </Card>
 
-            {/* Upcoming Appointments */}
-            <Card className="gradient-card shadow-lg">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-3">
-                  <CalendarIcon className="h-5 w-5" />
-                  <span className="gradient-text">Upcoming Appointments</span>
-                </CardTitle>
-                <CardDescription>Scheduled appointments and consultations linked to patient records</CardDescription>
-              </CardHeader>
-              <CardContent>
-                {isLoadingPatients && (
-                  <div className="flex items-center justify-center py-8">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-                    <span className="ml-2">Loading patient data...</span>
-                  </div>
-                )}
-                {!isLoadingPatients && (
-                  <>
-                    <div className="flex justify-between items-center mb-4">
-                      <div className="text-sm text-muted-foreground">
-                        {filteredAppointments.length} upcoming appointments
-                      </div>
-                      <div className="flex gap-2">
-                        <div className="relative">
-                          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                          <Input
-                            placeholder="Search by patient name, ID, or type..."
-                            value={appointmentSearchTerm}
-                            onChange={(e) => setAppointmentSearchTerm(e.target.value)}
-                            className="pl-10 w-64"
-                          />
+          {/* Pending Tasks */}
+          <Card className="gradient-card shadow-lg">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-3">
+                <CheckCircle2 className="h-5 w-5" />
+                <span className="gradient-text">Pending Tasks</span>
+              </CardTitle>
+              <CardDescription>Manage tasks and follow-ups for patient cases</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="flex justify-between items-center mb-4">
+                <div className="text-sm text-muted-foreground">
+                  {pendingTasks.filter(t => !t.completed).length} pending tasks
+                </div>
+                <Button onClick={() => setIsTaskDialogOpen(true)} className="bg-gradient-to-r from-green-500 via-emerald-500 to-teal-500 hover:from-green-600 hover:via-emerald-600 hover:to-teal-600 text-white rounded-xl">
+                  <Edit className="h-4 w-4 mr-2" />
+                  Add Task
+                </Button>
+              </div>
+              <div className="space-y-3">
+                {pendingTasks.map((task) => (
+                  <div key={task.id} className={`p-4 border rounded-lg ${task.completed ? 'bg-green-50 border-green-200' : 'bg-white border-border'}`}>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <input
+                          type="checkbox"
+                          checked={task.completed}
+                          onChange={() => toggleTaskCompletion(task.id)}
+                          className="w-4 h-4"
+                        />
+                        <div className={`flex-1 ${task.completed ? 'line-through text-muted-foreground' : ''}`}>
+                          <h4 className="font-semibold">{task.title}</h4>
+                          <p className="text-sm text-muted-foreground">{task.description}</p>
+                          {task.patientName && (
+                            <p className="text-xs text-blue-600">Patient: {task.patientName}</p>
+                          )}
                         </div>
-                        <Button onClick={() => setIsAppointmentDialogOpen(true)} className="bg-gradient-to-r from-green-500 via-emerald-500 to-teal-500 hover:from-green-600 hover:via-emerald-600 hover:to-teal-600 text-white rounded-xl">
-                          <CalendarIcon className="h-4 w-4 mr-2" />
-                          Add Appointment
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Badge variant="outline" className={
+                          task.priority === 'high' ? 'border-red-200 text-red-800' :
+                            task.priority === 'medium' ? 'border-yellow-200 text-yellow-800' :
+                              'border-green-200 text-green-800'
+                        }>
+                          {task.priority.toUpperCase()}
+                        </Badge>
+                        <div className="text-right text-xs text-muted-foreground">
+                          <div>Due: {task.dueDate.toLocaleDateString()}</div>
+                          <div>{task.dueDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
+                        </div>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => editTask(task)}
+                          className="text-blue-600 border-blue-200 hover:bg-blue-50"
+                        >
+                          <Edit className="h-3 w-3" />
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => deleteTask(task.id)}
+                          className="text-red-600 border-red-200 hover:bg-red-50"
+                        >
+                          <Trash2 className="h-3 w-3" />
                         </Button>
                       </div>
                     </div>
-                    <div className={filteredAppointments.length > 2 ? "overflow-y-auto max-h-[400px] pr-2 space-y-4" : "space-y-4"}>
-                      {filteredAppointments.map((appointment) => {
-                        const patient = patients.find(p => p.patient_id === appointment.patientId)
-                        return (
-                          <div key={appointment.id} className="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-lg transition-all duration-200 hover:border-gray-300">
-                            {/* Compact header with patient info and actions */}
-                            <div className="flex items-center justify-between mb-3">
-                              <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold text-sm overflow-hidden">
-                                  {(() => {
-                                    const patient = patients.find(p => p.patient_id === appointment.patientId)
-                                    return patient?.profile_picture ? (
-                                      <img
-                                        src={patient.profile_picture}
-                                        alt={`${appointment.patientName} profile`}
-                                        className="w-10 h-10 rounded-full object-cover"
-                                      />
-                                    ) : (
-                                      appointment.patientName[0].toUpperCase()
-                                    )
-                                  })()}
-                                </div>
-                                <div className="min-w-0 flex-1">
-                                  <h3 className="font-semibold text-gray-900 text-base truncate">{appointment.patientName}</h3>
-                                  <p className="text-sm text-gray-600 truncate">{appointment.type}</p>
-                                  <p className="text-xs text-gray-500">ID: {appointment.patientId}</p>
-                                </div>
-                              </div>
-                              <div className="flex gap-1 ml-2">
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  className="text-blue-600 border-blue-200 hover:bg-blue-50 h-8 px-2"
-                                  onClick={() => rescheduleAppointment(appointment.id)}
-                                >
-                                  <Edit className="h-3 w-3" />
-                                </Button>
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  className="text-red-600 border-red-200 hover:bg-red-50 h-8 px-2"
-                                  onClick={() => cancelAppointment(appointment.id)}
-                                >
-                                  <Trash2 className="h-3 w-3" />
-                                </Button>
-                              </div>
-                            </div>
-
-                            {/* Compact appointment details grid */}
-                            <div className="grid grid-cols-2 gap-4 mb-3">
-                              <div className="flex items-start gap-2">
-                                <CalendarIcon className="h-4 w-4 text-gray-400 mt-0.5 flex-shrink-0" />
-                                <div className="min-w-0">
-                                  <div className="text-xs font-medium text-gray-700">Date & Time</div>
-                                  <div className="text-sm text-gray-900 font-medium">{appointment.dateTime.toLocaleDateString()}</div>
-                                  <div className="text-xs text-gray-600">
-                                    {appointment.dateTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                  </div>
-                                </div>
-                              </div>
-
-                              <div className="flex items-start gap-2">
-                                <Activity className="h-4 w-4 text-gray-400 mt-0.5 flex-shrink-0" />
-                                <div className="min-w-0">
-                                  <div className="text-xs font-medium text-gray-700">Status</div>
-                                  <Badge variant="outline" className={`text-xs px-2 py-0.5 mt-1 ${
-                                    appointment.status === 'confirmed' ? 'border-green-200 text-green-800 bg-green-50' :
-                                    appointment.status === 'scheduled' ? 'border-blue-200 text-blue-800 bg-blue-50' :
-                                    'border-red-200 text-red-800 bg-red-50'
-                                  }`}>
-                                    {appointment.status}
-                                  </Badge>
-                                </div>
-                              </div>
-
-                              <div className="flex items-start gap-2">
-                                <Stethoscope className="h-4 w-4 text-gray-400 mt-0.5 flex-shrink-0" />
-                                <div className="min-w-0">
-                                  <div className="text-xs font-medium text-gray-700">Duration</div>
-                                  <div className="text-sm text-gray-900">{appointment.duration} min</div>
-                                </div>
-                              </div>
-
-                              <div className="flex items-start gap-2">
-                                <FileText className="h-4 w-4 text-gray-400 mt-0.5 flex-shrink-0" />
-                                <div className="min-w-0">
-                                  <div className="text-xs font-medium text-gray-700">Location</div>
-                                  <div className="text-sm text-gray-900 truncate">{appointment.location || 'Not specified'}</div>
-                                </div>
-                              </div>
-                            </div>
-
-                            {/* Enhanced notes section */}
-                            {appointment.notes && (
-                              <div className="pt-3 border-t border-gray-100">
-                                <div className="bg-blue-50 rounded-md p-3 border border-blue-100">
-                                  <div className="flex items-start gap-2">
-                                    <FileText className="h-4 w-4 text-blue-500 mt-0.5 flex-shrink-0" />
-                                    <div className="flex-1 min-w-0">
-                                      <div className="text-xs font-semibold text-blue-700 mb-1">Notes</div>
-                                      <div className="text-sm text-gray-700 leading-relaxed">{appointment.notes}</div>
-                                    </div>
-                                  </div>
-                                </div>
-                              </div>
-                            )}
-                          </div>
-                        )
-                      })}
-                      {filteredAppointments.length === 0 && (
-                        <div className="text-center py-8">
-                          <CalendarIcon className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                          <p className="text-muted-foreground">
-                            {appointmentSearchTerm.trim() ? 'No appointments match your search' : 'No upcoming appointments'}
-                          </p>
-                          {!appointmentSearchTerm.trim() && (
-                            <p className="text-sm text-muted-foreground/60 mt-2">
-                              Click "Add Appointment" to schedule your first appointment
-                            </p>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  </>
-                )}
-              </CardContent>
-            </Card>
-
-            {/* Pending Tasks */}
-            <Card className="gradient-card shadow-lg">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-3">
-                  <CheckCircle2 className="h-5 w-5" />
-                  <span className="gradient-text">Pending Tasks</span>
-                </CardTitle>
-                <CardDescription>Manage tasks and follow-ups for patient cases</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="flex justify-between items-center mb-4">
-                  <div className="text-sm text-muted-foreground">
-                    {pendingTasks.filter(t => !t.completed).length} pending tasks
                   </div>
-                  <Button onClick={() => setIsTaskDialogOpen(true)} className="bg-gradient-to-r from-green-500 via-emerald-500 to-teal-500 hover:from-green-600 hover:via-emerald-600 hover:to-teal-600 text-white rounded-xl">
-                    <Edit className="h-4 w-4 mr-2" />
-                    Add Task
-                  </Button>
-                </div>
-                <div className="space-y-3">
-                  {pendingTasks.map((task) => (
-                    <div key={task.id} className={`p-4 border rounded-lg ${task.completed ? 'bg-green-50 border-green-200' : 'bg-white border-border'}`}>
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                          <input
-                            type="checkbox"
-                            checked={task.completed}
-                            onChange={() => toggleTaskCompletion(task.id)}
-                            className="w-4 h-4"
-                          />
-                          <div className={`flex-1 ${task.completed ? 'line-through text-muted-foreground' : ''}`}>
-                            <h4 className="font-semibold">{task.title}</h4>
-                            <p className="text-sm text-muted-foreground">{task.description}</p>
-                            {task.patientName && (
-                              <p className="text-xs text-blue-600">Patient: {task.patientName}</p>
-                            )}
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Badge variant="outline" className={
-                            task.priority === 'high' ? 'border-red-200 text-red-800' :
-                            task.priority === 'medium' ? 'border-yellow-200 text-yellow-800' :
-                            'border-green-200 text-green-800'
-                          }>
-                            {task.priority.toUpperCase()}
-                          </Badge>
-                          <div className="text-right text-xs text-muted-foreground">
-                            <div>Due: {task.dueDate.toLocaleDateString()}</div>
-                            <div>{task.dueDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
-                          </div>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => editTask(task)}
-                            className="text-blue-600 border-blue-200 hover:bg-blue-50"
-                          >
-                            <Edit className="h-3 w-3" />
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => deleteTask(task.id)}
-                            className="text-red-600 border-red-200 hover:bg-red-50"
-                          >
-                            <Trash2 className="h-3 w-3" />
-                          </Button>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                  {pendingTasks.length === 0 && (
-                    <div className="text-center py-8">
-                      <CheckCircle2 className="h-12 w-12 text-green-500 mx-auto mb-4" />
-                      <p className="text-muted-foreground">No pending tasks</p>
-                    </div>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-         </TabsContent>
+                ))}
+                {pendingTasks.length === 0 && (
+                  <div className="text-center py-8">
+                    <CheckCircle2 className="h-12 w-12 text-green-500 mx-auto mb-4" />
+                    <p className="text-muted-foreground">No pending tasks</p>
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
       </Tabs>
 
       {/* Edit Patient Dialog */}
@@ -2932,7 +3241,7 @@ export function AdvancedReports({ className }: AdvancedReportsProps) {
                   <Input
                     id="edit-patient-name"
                     value={editForm.name}
-                    onChange={(e) => setEditForm({...editForm, name: e.target.value})}
+                    onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
                     placeholder="Enter patient full name"
                     required
                   />
@@ -2943,7 +3252,7 @@ export function AdvancedReports({ className }: AdvancedReportsProps) {
                   <Input
                     id="edit-patient-id"
                     value={editForm.patientId}
-                    onChange={(e) => setEditForm({...editForm, patientId: e.target.value})}
+                    onChange={(e) => setEditForm({ ...editForm, patientId: e.target.value })}
                     placeholder="P-2024-XXX"
                     required
                   />
@@ -2955,7 +3264,7 @@ export function AdvancedReports({ className }: AdvancedReportsProps) {
                     id="edit-birth-date"
                     type="date"
                     value={editForm.birthDate}
-                    onChange={(e) => setEditForm({...editForm, birthDate: e.target.value})}
+                    onChange={(e) => setEditForm({ ...editForm, birthDate: e.target.value })}
                   />
                 </div>
               </div>
@@ -2967,7 +3276,7 @@ export function AdvancedReports({ className }: AdvancedReportsProps) {
                     id="edit-email"
                     type="email"
                     value={editForm.email}
-                    onChange={(e) => setEditForm({...editForm, email: e.target.value})}
+                    onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
                     placeholder="patient@example.com"
                   />
                 </div>
@@ -2978,7 +3287,7 @@ export function AdvancedReports({ className }: AdvancedReportsProps) {
                     id="edit-phone"
                     type="tel"
                     value={editForm.phone}
-                    onChange={(e) => setEditForm({...editForm, phone: e.target.value})}
+                    onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })}
                     placeholder="+1 (555) 123-4567"
                   />
                 </div>
@@ -2996,9 +3305,9 @@ export function AdvancedReports({ className }: AdvancedReportsProps) {
                       if (file) {
                         // Create preview URL for the selected file
                         const previewUrl = URL.createObjectURL(file);
-                        setEditForm({...editForm, profilePicture: file, profilePictureUrl: previewUrl});
+                        setEditForm({ ...editForm, profilePicture: file, profilePictureUrl: previewUrl });
                       } else {
-                        setEditForm({...editForm, profilePicture: null});
+                        setEditForm({ ...editForm, profilePicture: null });
                       }
                     }}
                     className="flex-1"
@@ -3035,445 +3344,190 @@ export function AdvancedReports({ className }: AdvancedReportsProps) {
         </DialogContent>
       </Dialog>
 
-      {/* Medical Report Dialog */}
+      {/* Medical Report Dialog â€“ single-page professional layout */}
       <Dialog open={isReportDialogOpen} onOpenChange={setIsReportDialogOpen}>
-        <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <FileText className="h-5 w-5" />
-              Patient Medical Report
+              <FileText className="h-5 w-5 text-emerald-600" />
+              Medical Laboratory Report
             </DialogTitle>
             <DialogDescription>
-              Detailed analysis and interpretation for {selectedAnalysisForReport?.patient_name}
+              AI-Assisted Diagnostic Analysis for {selectedAnalysisForReport?.patient_name}
             </DialogDescription>
           </DialogHeader>
 
           {selectedAnalysisForReport && (
-            <div id="medical-report" className="space-y-6">
-              <Tabs defaultValue="overview" className="w-full">
-                <TabsList className="grid w-full grid-cols-3 rounded-xl gradient-bg">
-                  <TabsTrigger value="overview" className="rounded-lg hover-lift data-[state=active]:bg-gradient-to-r data-[state=active]:from-green-500 data-[state=active]:via-emerald-500 data-[state=active]:to-teal-500 data-[state=active]:text-white">Overview</TabsTrigger>
-                  <TabsTrigger value="tests" className="rounded-lg hover-lift data-[state=active]:bg-gradient-to-r data-[state=active]:from-green-500 data-[state=active]:via-emerald-500 data-[state=active]:to-teal-500 data-[state=active]:text-white">Test Results</TabsTrigger>
-                  <TabsTrigger value="recommendations" className="rounded-lg hover-lift data-[state=active]:bg-gradient-to-r data-[state=active]:from-green-500 data-[state=active]:via-emerald-500 data-[state=active]:to-teal-500 data-[state=active]:text-white">Recommendations</TabsTrigger>
-                </TabsList>
+            <div className="space-y-6 mt-2">
 
-                {/* Overview Tab */}
-                <TabsContent value="overview" className="space-y-6 mt-6">
-                  {/* Patient Information Card */}
-                  <Card className="gradient-card shadow-lg">
-                    <CardHeader>
-                      <CardTitle className="flex items-center gap-2 gradient-text">
-                        <Users className="h-5 w-5" />
-                        Patient Information
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                          <div className="flex items-center gap-3">
-                            <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold text-sm overflow-hidden">
-                              {selectedAnalysisForReport.profile_picture ? (
-                                <img
-                                  src={selectedAnalysisForReport.profile_picture}
-                                  alt={`${selectedAnalysisForReport.patient_name} profile`}
-                                  className="w-12 h-12 rounded-full object-cover"
-                                />
-                              ) : (
-                                (selectedAnalysisForReport.patient_name || 'U')[0].toUpperCase()
-                              )}
-                            </div>
-                            <div>
-                              <p className="font-semibold text-foreground">{selectedAnalysisForReport.patient_name}</p>
-                              <p className="text-sm text-muted-foreground">ID: {selectedAnalysisForReport.patient_id_display}</p>
-                            </div>
-                          </div>
-                          {selectedAnalysisForReport.birth_date && (
-                            <div className="text-sm">
-                              <span className="text-muted-foreground">Birth Date:</span>{' '}
-                              <span className="font-medium">{new Date(selectedAnalysisForReport.birth_date).toLocaleDateString()}</span>
-                            </div>
-                          )}
-                          {selectedAnalysisForReport.email && (
-                            <div className="text-sm">
-                              <span className="text-muted-foreground">Email:</span>{' '}
-                              <span className="font-medium">{selectedAnalysisForReport.email}</span>
-                            </div>
-                          )}
-                          {selectedAnalysisForReport.phone && (
-                            <div className="text-sm">
-                              <span className="text-muted-foreground">Phone:</span>{' '}
-                              <span className="font-medium">{selectedAnalysisForReport.phone}</span>
-                            </div>
-                          )}
-                        </div>
-                        <div className="space-y-2">
-                          <div className="text-sm">
-                            <span className="text-muted-foreground">Report ID:</span>{' '}
-                            <span className="font-medium">{selectedAnalysisForReport.id}</span>
-                          </div>
-                          <div className="text-sm">
-                            <span className="text-muted-foreground">Analysis Date:</span>{' '}
-                            <span className="font-medium">{new Date(selectedAnalysisForReport.created_at).toLocaleDateString()}</span>
-                          </div>
-                          <div className="text-sm">
-                            <span className="text-muted-foreground">Confidence:</span>{' '}
-                            <Badge variant="outline" className={
-                              selectedAnalysisForReport.confidence >= 80 ? "bg-green-100 text-green-800 border-green-200" :
-                              selectedAnalysisForReport.confidence >= 60 ? "bg-yellow-100 text-yellow-800 border-yellow-200" :
-                              "bg-red-100 text-red-800 border-red-200"
-                            }>
-                              {selectedAnalysisForReport.confidence}%
-                            </Badge>
-                          </div>
-                          {selectedAnalysisForReport.doctor_name && (
-                            <div className="text-sm">
-                              <span className="text-muted-foreground">Doctor:</span>{' '}
-                              <span className="font-medium">{selectedAnalysisForReport.doctor_name}</span>
-                            </div>
-                          )}
-                          {selectedAnalysisForReport.department && (
-                            <div className="text-sm">
-                              <span className="text-muted-foreground">Department:</span>{' '}
-                              <span className="font-medium">{selectedAnalysisForReport.department}</span>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
+              {/* â”€â”€ Report Header â”€â”€ */}
+              <div className="flex items-center justify-between border-b-2 border-emerald-500 pb-3">
+                <div>
+                  <h2 className="text-lg font-bold text-emerald-700">Medical Laboratory Report</h2>
+                  <p className="text-xs text-muted-foreground">AI-Assisted Diagnostic Analysis</p>
+                </div>
+                <div className="text-right text-xs text-muted-foreground space-y-0.5">
+                  <p className="font-semibold text-foreground">Report #{selectedAnalysisForReport.id}</p>
+                  <p>{format(new Date(selectedAnalysisForReport.created_at), 'PPP')}</p>
+                </div>
+              </div>
 
-                  {/* AI Diagnosis Card */}
-                  <Card className="gradient-card shadow-lg">
-                    <CardHeader>
-                      <CardTitle className="flex items-center gap-2 gradient-text">
-                        <Activity className="h-5 w-5" />
-                        Patient Parameters
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="space-y-4">
-                        {(() => {
-                          // Calculate age from birth date
-                          const age = selectedAnalysisForReport.birth_date 
-                            ? new Date().getFullYear() - new Date(selectedAnalysisForReport.birth_date).getFullYear()
-                            : 'N/A'
-                          
-                          // Gender from patient info (hardcoded as Male based on existing code)
-                          const gender = 'Male'
-                          
-                          // Extract lab test values from patientLabTests
-                          const getLabValue = (testName: string) => {
-                            const test = patientLabTests.find((t: any) => t.testName === testName)
-                            return test ? `${test.value} ${test.unit}` : 'N/A'
-                          }
-                          
-                          const parameters = [
-                            { key: 'Gender', label: 'Gender', value: gender },
-                            { key: 'AST', label: 'AST', value: getLabValue('AST') },
-                            { key: 'ALP', label: 'ALP', value: getLabValue('ALP') },
-                            { key: 'ALT', label: 'ALT', value: getLabValue('ALT') },
-                            { key: 'Albumin', label: 'Albumin', value: getLabValue('Albumin') },
-                            { key: 'Total Bilirubin', label: 'Total Bilirubin', value: getLabValue('Total Bilirubin') },
-                            { key: 'BMI', label: 'BMI', value: getLabValue('BMI') }
-                          ]
-
-                          return (
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                              {parameters.map((param) => (
-                                <div key={param.key} className="p-4 bg-blue-50 rounded-lg border border-blue-200">
-                                  <div className="flex items-center justify-between mb-2">
-                                    <span className="font-semibold text-blue-900">{param.label}</span>
-                                    <Badge variant="outline" className="bg-blue-100 text-blue-800 border-blue-200">
-                                      {param.value}
-                                    </Badge>
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
-                          )
-                        })()}
-                      </div>
-                    </CardContent>
-                  </Card>
-                </TabsContent>
-
-                {/* Test Results Tab */}
-                <TabsContent value="tests" className="space-y-6 mt-6">
-                  {selectedAnalysisForReport.detailed_results && Object.keys(JSON.parse(selectedAnalysisForReport.detailed_results || '{}')).length > 0 ? (
-                    <Card className="gradient-card shadow-lg">
-                      <CardHeader>
-                        <CardTitle className="flex items-center gap-2 gradient-text">
-                          <BarChart3 className="h-5 w-5" />
-                          Laboratory Test Results
-                        </CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                        <div className="space-y-4">
-                          {(() => {
-                            const detailedResults = JSON.parse(selectedAnalysisForReport.detailed_results || '{}')
-                            
-                            // Helper function to render test result
-                            const renderTestResult = (testName: string, testData: any) => {
-                              if (!testData) return null
-                              
-                              const value = testData.value ?? testData.result ?? testData
-                              const unit = testData.unit ?? ''
-                              const normalRange = testData.normal_range ?? testData.normalRange ?? 'N/A'
-                              const status = testData.status ?? 'normal'
-                              const isNormal = status === 'normal'
-                              
-                              return (
-                                <div key={testName} className={`p-4 rounded-lg border ${isNormal ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'}`}>
-                                  <div className="flex items-center justify-between mb-2">
-                                    <h3 className="font-semibold text-foreground">{testName}</h3>
-                                    <Badge variant="outline" className={
-                                      isNormal ? "bg-green-100 text-green-800 border-green-200" : "bg-red-100 text-red-800 border-red-200"
-                                    }>
-                                      {isNormal ? 'Normal' : 'Abnormal'}
-                                    </Badge>
-                                  </div>
-                                  <div className="grid grid-cols-3 gap-4 text-sm">
-                                    <div>
-                                      <p className="text-muted-foreground">Value</p>
-                                      <p className="font-bold text-lg">{value} {unit}</p>
-                                    </div>
-                                    <div>
-                                      <p className="text-muted-foreground">Normal Range</p>
-                                      <p className="font-medium">{normalRange}</p>
-                                    </div>
-                                    <div>
-                                      <p className="text-muted-foreground">Status</p>
-                                      <Badge variant="outline" className={
-                                        isNormal ? "bg-green-100 text-green-800 border-green-200" : "bg-red-100 text-red-800 border-red-200"
-                                      }>
-                                        {status}
-                                      </Badge>
-                                    </div>
-                                  </div>
-                                  {testData.interpretation && (
-                                    <div className="mt-3 pt-3 border-t">
-                                      <p className="text-sm text-muted-foreground">
-                                        <strong>Interpretation:</strong> {testData.interpretation}
-                                      </p>
-                                    </div>
-                                  )}
-                                </div>
-                              )
-                            }
-                            
-                            // Render individual test results from detailed_results
-                            return (
-                              <>
-                                {Object.entries(detailedResults).map(([key, value]: [string, any]) => {
-                                  // Skip nested objects (cancer, hepatitis, fatty_liver, gate)
-                                  if (typeof value === 'object' && value !== null) return null
-                                  
-                                  // Render individual test values
-                                  return renderTestResult(key, value)
-                                })}
-                                
-                                {/* Render detailed analysis results if available */}
-                                {detailedResults.cancer && (
-                                  <div className="p-4 bg-red-50 rounded-lg border border-red-200">
-                                    <h3 className="font-semibold text-red-900 mb-3">Cancer Risk Assessment</h3>
-                                    <div className="grid grid-cols-2 gap-4 text-sm">
-                                      <div>
-                                        <p className="text-muted-foreground">Risk Level</p>
-                                        <p className="font-bold text-lg">{detailedResults.cancer.risk_level || 'N/A'}</p>
-                                      </div>
-                                      <div>
-                                        <p className="text-muted-foreground">Risk Percentage</p>
-                                        <p className="font-bold text-lg">{detailedResults.cancer.risk_percentage?.toFixed(1) || 'N/A'}%</p>
-                                      </div>
-                                    </div>
-                                    {detailedResults.cancer.advice && (
-                                      <div className="mt-3 pt-3 border-t">
-                                        <p className="text-sm text-muted-foreground">
-                                          <strong>Advice:</strong> {detailedResults.cancer.advice}
-                                        </p>
-                                      </div>
-                                    )}
-                                  </div>
-                                )}
-                                
-                                {detailedResults.hepatitis && (
-                                  <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
-                                    <h3 className="font-semibold text-blue-900 mb-3">Hepatitis Analysis</h3>
-                                    <div className="grid grid-cols-2 gap-4 text-sm">
-                                      <div>
-                                        <p className="text-muted-foreground">Stage</p>
-                                        <p className="font-bold text-lg">{detailedResults.hepatitis.stage || 'N/A'}</p>
-                                      </div>
-                                      <div>
-                                        <p className="text-muted-foreground">Risk Level</p>
-                                        <p className="font-bold text-lg">{detailedResults.hepatitis.risk_level || 'N/A'}</p>
-                                      </div>
-                                      <div>
-                                        <p className="text-muted-foreground">Mortality Risk</p>
-                                        <p className="font-bold text-lg">{detailedResults.hepatitis.mortality_risk?.toFixed(1) || 'N/A'}%</p>
-                                      </div>
-                                      <div>
-                                        <p className="text-muted-foreground">Complications Risk</p>
-                                        <p className="font-bold text-lg">{detailedResults.hepatitis.complications_risk?.toFixed(1) || 'N/A'}%</p>
-                                      </div>
-                                    </div>
-                                    {detailedResults.hepatitis.advice && (
-                                      <div className="mt-3 pt-3 border-t">
-                                        <p className="text-sm text-muted-foreground">
-                                          <strong>Advice:</strong> {detailedResults.hepatitis.advice}
-                                        </p>
-                                      </div>
-                                    )}
-                                  </div>
-                                )}
-                                
-                                {detailedResults.fatty_liver && (
-                                  <div className="p-4 bg-green-50 rounded-lg border border-green-200">
-                                    <h3 className="font-semibold text-green-900 mb-3">Fatty Liver Analysis</h3>
-                                    <div className="grid grid-cols-2 gap-4 text-sm">
-                                      <div>
-                                        <p className="text-muted-foreground">Diagnosis</p>
-                                        <p className="font-bold text-lg">{detailedResults.fatty_liver.diagnosis || 'N/A'}</p>
-                                      </div>
-                                      <div>
-                                        <p className="text-muted-foreground">Sick Probability</p>
-                                        <p className="font-bold text-lg">{detailedResults.fatty_liver.sick_probability?.toFixed(1) || 'N/A'}%</p>
-                                      </div>
-                                      <div>
-                                        <p className="text-muted-foreground">Has Fatty Liver</p>
-                                        <Badge variant="outline" className={
-                                          detailedResults.fatty_liver.has_fatty_liver 
-                                            ? "bg-red-100 text-red-800 border-red-200" 
-                                            : "bg-green-100 text-green-800 border-green-200"
-                                        }>
-                                          {detailedResults.fatty_liver.has_fatty_liver ? 'Yes' : 'No'}
-                                        </Badge>
-                                      </div>
-                                    </div>
-                                    {detailedResults.fatty_liver.advice && (
-                                      <div className="mt-3 pt-3 border-t">
-                                        <p className="text-sm text-muted-foreground">
-                                          <strong>Advice:</strong> {detailedResults.fatty_liver.advice}
-                                        </p>
-                                      </div>
-                                    )}
-                                  </div>
-                                )}
-                              </>
-                            )
-                          })()}
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ) : (
-                    <Card className="gradient-card shadow-lg">
-                      <CardContent className="py-8">
-                        <div className="text-center">
-                          <Activity className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                          <p className="text-muted-foreground">No detailed test results available for this analysis.</p>
-                          <p className="text-sm text-muted-foreground/60 mt-2">
-                            Detailed laboratory values are not stored in the database for this report.
-                          </p>
-                        </div>
-                      </CardContent>
-                    </Card>
+              {/* â”€â”€ Patient Information â”€â”€ */}
+              <div>
+                <h3 className="text-xs font-bold text-emerald-700 uppercase tracking-wide border-b border-emerald-200 pb-1 mb-3">Patient Information</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-2">
+                  <div className="flex items-center gap-3 md:col-span-2 mb-2">
+                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center text-white font-bold text-sm overflow-hidden flex-shrink-0">
+                      {selectedAnalysisForReport.profile_picture ? (
+                        <img src={selectedAnalysisForReport.profile_picture} alt="" className="w-10 h-10 rounded-full object-cover" />
+                      ) : (
+                        (selectedAnalysisForReport.patient_name || 'U')[0].toUpperCase()
+                      )}
+                    </div>
+                    <div>
+                      <p className="font-semibold text-foreground">{selectedAnalysisForReport.patient_name}</p>
+                      <p className="text-xs text-muted-foreground">ID: {selectedAnalysisForReport.patient_id_display}</p>
+                    </div>
+                  </div>
+                  {selectedAnalysisForReport.birth_date && (
+                    <div className="text-sm"><span className="text-muted-foreground">Date of Birth:</span> <span className="font-medium">{format(new Date(selectedAnalysisForReport.birth_date), 'PP')}</span></div>
                   )}
-                </TabsContent>
+                  {selectedAnalysisForReport.birth_date && (
+                    <div className="text-sm"><span className="text-muted-foreground">Age:</span> <span className="font-medium">{Math.floor((Date.now() - new Date(selectedAnalysisForReport.birth_date).getTime()) / (365.25 * 24 * 60 * 60 * 1000))} years</span></div>
+                  )}
+                  {selectedAnalysisForReport.email && (
+                    <div className="text-sm"><span className="text-muted-foreground">Email:</span> <span className="font-medium">{selectedAnalysisForReport.email}</span></div>
+                  )}
+                  {selectedAnalysisForReport.phone && (
+                    <div className="text-sm"><span className="text-muted-foreground">Phone:</span> <span className="font-medium">{selectedAnalysisForReport.phone}</span></div>
+                  )}
+                  {selectedAnalysisForReport.doctor_name && (
+                    <div className="text-sm"><span className="text-muted-foreground">Doctor:</span> <span className="font-medium">{selectedAnalysisForReport.doctor_name}</span></div>
+                  )}
+                  {selectedAnalysisForReport.department && (
+                    <div className="text-sm"><span className="text-muted-foreground">Department:</span> <span className="font-medium">{selectedAnalysisForReport.department}</span></div>
+                  )}
+                </div>
+              </div>
 
-                {/* Recommendations Tab */}
-                <TabsContent value="recommendations" className="space-y-6 mt-6">
-                  <Card className="gradient-card shadow-lg">
-                    <CardHeader>
-                      <CardTitle className="flex items-center gap-2 gradient-text">
-                        <AlertCircle className="h-5 w-5 text-yellow-600" />
-                        Important Considerations
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <ul className="space-y-3 text-sm">
-                        <li className="flex items-start gap-2">
-                          <div className="w-2 h-2 rounded-full bg-yellow-500 mt-1.5 flex-shrink-0" />
-                          <span>Results should be interpreted in clinical context with patient history</span>
-                        </li>
-                        <li className="flex items-start gap-2">
-                          <div className="w-2 h-2 rounded-full bg-yellow-500 mt-1.5 flex-shrink-0" />
-                          <span>Further testing may be required for definitive diagnosis</span>
-                        </li>
-                        <li className="flex items-start gap-2">
-                          <div className="w-2 h-2 rounded-full bg-yellow-500 mt-1.5 flex-shrink-0" />
-                          <span>Regular monitoring is essential for chronic liver conditions</span>
-                        </li>
-                        <li className="flex items-start gap-2">
-                          <div className="w-2 h-2 rounded-full bg-yellow-500 mt-1.5 flex-shrink-0" />
-                          <span>Lifestyle modifications may improve liver function</span>
-                        </li>
-                      </ul>
-                    </CardContent>
-                  </Card>
+              {/* â”€â”€ AI Diagnosis â”€â”€ */}
+              <div>
+                <h3 className="text-xs font-bold text-emerald-700 uppercase tracking-wide border-b border-emerald-200 pb-1 mb-3">AI Diagnosis</h3>
+                <div className="rounded-lg border border-yellow-200 bg-yellow-50/50 p-0 overflow-hidden">
+                  <div className="bg-yellow-100/50 border-b border-yellow-100 p-3">
+                    <h3 className="font-bold text-yellow-900 text-sm uppercase">General Test Result</h3>
+                  </div>
+                  <div className="p-4 space-y-4">
+                    {/* Diagnosis */}
+                    <div>
+                      <p className="text-[10px] uppercase text-gray-500 font-bold tracking-wider mb-1">Diagnosis</p>
+                      <p className="text-lg font-bold text-yellow-900">
+                        {selectedAnalysisForReport.diagnosis && selectedAnalysisForReport.diagnosis.includes('Complex Liver Disease')
+                          ? 'Potential Liver Disease Detected'
+                          : selectedAnalysisForReport.diagnosis}
+                      </p>
+                    </div>
 
-                  <Card className="gradient-card shadow-lg">
-                    <CardHeader>
-                      <CardTitle className="flex items-center gap-2 gradient-text">
-                        <FileText className="h-5 w-5 text-blue-600" />
-                        Medical References
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="space-y-2 text-sm">
-                        <p><strong>AASLD Guidelines:</strong> American Association for the Study of Liver Diseases</p>
-                        <p><strong>WHO Standards:</strong> World Health Organization diagnostic criteria</p>
-                        <p><strong>PubMed References:</strong> Latest research on liver function interpretation</p>
-                        <p><strong>Clinical Chemistry:</strong> Standard laboratory reference ranges</p>
+                    {/* Confidence */}
+                    <div>
+                      <div className="flex items-center justify-between mb-1">
+                        <p className="text-[10px] uppercase text-gray-500 font-bold tracking-wider">Confidence</p>
+                        <Badge variant="outline" className="bg-yellow-100 text-yellow-800 border-yellow-200 text-xs font-bold">
+                          {selectedAnalysisForReport.confidence}%
+                        </Badge>
                       </div>
-                    </CardContent>
-                  </Card>
-                </TabsContent>
-              </Tabs>
+                      <div className="h-2 rounded-full bg-gray-100 overflow-hidden">
+                        <div
+                          className="h-full rounded-full transition-all bg-yellow-600"
+                          style={{ width: `${selectedAnalysisForReport.confidence}%` }}
+                        />
+                      </div>
+                    </div>
 
-              {/* Footer */}
-              <div className="text-center text-xs text-muted-foreground border-t pt-4 mt-6">
+                    {/* Clinical Advice */}
+                    {selectedAnalysisForReport.advice && (
+                      <div>
+                        <p className="text-[10px] uppercase text-gray-500 font-bold tracking-wider mb-1">Clinical Advice</p>
+                        <p className="text-sm text-gray-800 leading-relaxed">{selectedAnalysisForReport.advice}</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+
+              {/* â”€â”€ Detailed Analysis Results â”€â”€ */}
+              {selectedAnalysisForReport.detailed_results && (() => {
+                const dr = JSON.parse(selectedAnalysisForReport.detailed_results || '{}')
+                const hasDetails = dr.cancer || dr.hepatitis || dr.fatty_liver
+                if (!hasDetails) return null
+                return (
+                  <div>
+                    <h3 className="text-xs font-bold text-emerald-700 uppercase tracking-wide border-b border-emerald-200 pb-1 mb-3">Detailed Analysis Results</h3>
+                    <div className="space-y-3">
+                      {dr.cancer && (
+                        <div className="p-4 rounded-lg border border-red-200 bg-red-50/50">
+                          <h4 className="font-semibold text-red-900 text-sm mb-2">Cancer Risk Assessment</h4>
+                          <div className="grid grid-cols-2 gap-4 text-sm">
+                            <div><span className="text-muted-foreground">Risk Level:</span> <span className="font-medium">{dr.cancer.risk_level || 'N/A'}</span></div>
+                            <div><span className="text-muted-foreground">Risk:</span> <span className="font-medium">{dr.cancer.risk_percentage?.toFixed(1) || 'N/A'}%</span></div>
+                          </div>
+                          {dr.cancer.advice && <p className="text-xs text-muted-foreground mt-2 pt-2 border-t border-red-200">{dr.cancer.advice}</p>}
+                        </div>
+                      )}
+                      {dr.hepatitis && (
+                        <div className="p-4 rounded-lg border border-blue-200 bg-blue-50/50">
+                          <h4 className="font-semibold text-blue-900 text-sm mb-2">Hepatitis Analysis</h4>
+                          <div className="grid grid-cols-2 gap-4 text-sm">
+                            <div><span className="text-muted-foreground">Stage:</span> <span className="font-medium">{dr.hepatitis.stage || 'N/A'}</span></div>
+                            <div><span className="text-muted-foreground">Risk Level:</span> <span className="font-medium">{dr.hepatitis.risk_level || 'N/A'}</span></div>
+                            <div><span className="text-muted-foreground">Mortality Risk:</span> <span className="font-medium">{dr.hepatitis.mortality_risk?.toFixed(1) || 'N/A'}%</span></div>
+                            <div><span className="text-muted-foreground">Complications:</span> <span className="font-medium">{dr.hepatitis.complications_risk?.toFixed(1) || 'N/A'}%</span></div>
+                          </div>
+                          {dr.hepatitis.advice && <p className="text-xs text-muted-foreground mt-2 pt-2 border-t border-blue-200">{dr.hepatitis.advice}</p>}
+                        </div>
+                      )}
+                      {dr.fatty_liver && (
+                        <div className="p-4 rounded-lg border border-green-200 bg-green-50/50">
+                          <h4 className="font-semibold text-green-900 text-sm mb-2">Fatty Liver Analysis</h4>
+                          <div className="grid grid-cols-2 gap-4 text-sm">
+                            <div><span className="text-muted-foreground">Diagnosis:</span> <span className="font-medium">{dr.fatty_liver.diagnosis || 'N/A'}</span></div>
+                            <div><span className="text-muted-foreground">Sick Probability:</span> <span className="font-medium">{dr.fatty_liver.sick_probability?.toFixed(1) || 'N/A'}%</span></div>
+                            <div>
+                              <span className="text-muted-foreground">Has Fatty Liver:</span>{' '}
+                              <Badge variant="outline" className={dr.fatty_liver.has_fatty_liver ? "bg-red-100 text-red-800 border-red-200" : "bg-green-100 text-green-800 border-green-200"}>
+                                {dr.fatty_liver.has_fatty_liver ? 'Yes' : 'No'}
+                              </Badge>
+                            </div>
+                          </div>
+                          {dr.fatty_liver.advice && <p className="text-xs text-muted-foreground mt-2 pt-2 border-t border-green-200">{dr.fatty_liver.advice}</p>}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )
+              })()}
+
+              {/* â”€â”€ Disclaimer Footer â”€â”€ */}
+              <div className="text-center text-[11px] text-muted-foreground border-t-2 border-emerald-500 pt-3 mt-4 space-y-0.5">
                 <p>This report is generated by AI analysis and should not replace professional medical advice.</p>
                 <p>Please consult with a qualified healthcare provider for interpretation and treatment decisions.</p>
               </div>
             </div>
           )}
 
-          <Separator className="my-4" />
+          <Separator className="my-3" />
 
           <div className="flex justify-end gap-2">
             <Button variant="outline" onClick={() => setIsReportDialogOpen(false)}>
               Close
             </Button>
-            <Button onClick={() => window.print()}>
-              <Printer className="h-4 w-4 mr-2" />
+            <Button variant="outline" onClick={printReport} className="gap-2">
+              <Printer className="h-4 w-4" />
               Print
             </Button>
-            <Button onClick={async () => {
-              if (!selectedAnalysisForReport) return
-
-              try {
-                const element = document.getElementById('medical-report')
-                if (!element) return
-
-                const canvas = await html2canvas(element, {
-                  scale: 2,
-                  useCORS: true,
-                  logging: false
-                })
-                
-                const imgData = canvas.toDataURL('image/png')
-                const pdf = new jsPDF('p', 'mm', 'a4')
-                const imgWidth = 210
-                const imgHeight = (canvas.height * imgWidth) / canvas.width
-                pdf.addImage(imgData, 'PNG', 0, 0, imgWidth, imgHeight)
-                pdf.save(`medical-report-${selectedAnalysisForReport.patient_name}-${format(new Date(), 'yyyy-MM-dd')}.pdf`)
-                toast.success('Medical report PDF exported successfully')
-              } catch (error) {
-                console.error('Error generating PDF:', error)
-                toast.error('Failed to export PDF')
-              }
-            }}>
-              <Download className="h-4 w-4 mr-2" />
+            <Button onClick={exportToPDF} className="gap-2 bg-emerald-600 hover:bg-emerald-700 text-white">
+              <Download className="h-4 w-4" />
               Download PDF
             </Button>
           </div>
@@ -3560,30 +3614,30 @@ export function AdvancedReports({ className }: AdvancedReportsProps) {
                     <div className="border-l-4 border-green-500 pl-4">
                       <h4 className="font-semibold text-green-800">Acetaminophen (Tylenol)</h4>
                       <ul className="text-sm text-green-700 mt-1 space-y-1">
-                        <li>• Adults: 325-650 mg every 4-6 hours (max 3g/day)</li>
-                        <li>• Children: 10-15 mg/kg every 4-6 hours</li>
-                        <li>• Maximum daily dose: 75 mg/kg or 3g (whichever is less)</li>
+                        <li>â€¢ Adults: 325-650 mg every 4-6 hours (max 3g/day)</li>
+                        <li>â€¢ Children: 10-15 mg/kg every 4-6 hours</li>
+                        <li>â€¢ Maximum daily dose: 75 mg/kg or 3g (whichever is less)</li>
                       </ul>
                     </div>
                     <div className="border-l-4 border-green-500 pl-4">
                       <h4 className="font-semibold text-green-800">Ibuprofen (Advil/Motrin)</h4>
                       <ul className="text-sm text-green-700 mt-1 space-y-1">
-                        <li>• Adults: 200-400 mg every 4-6 hours (max 1.2g/day)</li>
-                        <li>• Children: 5-10 mg/kg every 6-8 hours</li>
-                        <li>• Maximum daily dose: 40 mg/kg</li>
+                        <li>â€¢ Adults: 200-400 mg every 4-6 hours (max 1.2g/day)</li>
+                        <li>â€¢ Children: 5-10 mg/kg every 6-8 hours</li>
+                        <li>â€¢ Maximum daily dose: 40 mg/kg</li>
                       </ul>
                     </div>
                     <div className="border-l-4 border-green-500 pl-4">
                       <h4 className="font-semibold text-green-800">Amoxicillin</h4>
                       <ul className="text-sm text-green-700 mt-1 space-y-1">
-                        <li>• Adults: 500 mg every 8 hours or 875 mg every 12 hours</li>
-                        <li>• Children: 20-40 mg/kg/day divided every 8 hours</li>
-                        <li>• Duration: 7-10 days for most infections</li>
+                        <li>â€¢ Adults: 500 mg every 8 hours or 875 mg every 12 hours</li>
+                        <li>â€¢ Children: 20-40 mg/kg/day divided every 8 hours</li>
+                        <li>â€¢ Duration: 7-10 days for most infections</li>
                       </ul>
                     </div>
                   </div>
                   <div className="mt-4 p-3 bg-yellow-100 rounded text-sm text-yellow-800">
-                    <strong>⚠️ Important:</strong> Dosages should be adjusted for renal/hepatic impairment, age, and weight. Always double-check calculations and consult drug references for contraindications.
+                    <strong>âš ï¸ Important:</strong> Dosages should be adjusted for renal/hepatic impairment, age, and weight. Always double-check calculations and consult drug references for contraindications.
                   </div>
                 </div>
               </div>
@@ -3612,7 +3666,7 @@ export function AdvancedReports({ className }: AdvancedReportsProps) {
                         </div>
                         <div className="flex justify-between">
                           <span>Stage 2 Hypertension:</span>
-                          <span className="font-medium">≥140/≥90 mmHg</span>
+                          <span className="font-medium">â‰¥140/â‰¥90 mmHg</span>
                         </div>
                       </div>
                     </div>
@@ -3660,15 +3714,15 @@ export function AdvancedReports({ className }: AdvancedReportsProps) {
                       <div className="space-y-2 text-sm">
                         <div className="flex justify-between">
                           <span>Normal (oral):</span>
-                          <span className="font-medium">36.5-37.5°C (97.7-99.5°F)</span>
+                          <span className="font-medium">36.5-37.5Â°C (97.7-99.5Â°F)</span>
                         </div>
                         <div className="flex justify-between">
                           <span>Fever:</span>
-                          <span className="font-medium">&gt;38.0°C (&gt;100.4°F)</span>
+                          <span className="font-medium">&gt;38.0Â°C (&gt;100.4Â°F)</span>
                         </div>
                         <div className="flex justify-between">
                           <span>Hypothermia:</span>
-                          <span className="font-medium">&lt;35.0°C (&lt;95.0°F)</span>
+                          <span className="font-medium">&lt;35.0Â°C (&lt;95.0Â°F)</span>
                         </div>
                       </div>
                     </div>
@@ -3784,7 +3838,7 @@ export function AdvancedReports({ className }: AdvancedReportsProps) {
                     </div>
                   </div>
                   <div className="mt-4 p-3 bg-blue-100 rounded text-sm text-blue-800">
-                    <strong>💡 Tip:</strong> Always write abbreviations in full first, then use the abbreviation in parentheses. Avoid non-standard abbreviations to prevent miscommunication.
+                    <strong>ðŸ’¡ Tip:</strong> Always write abbreviations in full first, then use the abbreviation in parentheses. Avoid non-standard abbreviations to prevent miscommunication.
                   </div>
                 </div>
               </div>
@@ -3799,10 +3853,10 @@ export function AdvancedReports({ className }: AdvancedReportsProps) {
             </Button>
           </div>
         </DialogContent>
-      </Dialog>
+      </Dialog >
 
       {/* AI Insight Details Modal */}
-      <Dialog open={isInsightModalOpen} onOpenChange={setIsInsightModalOpen}>
+      < Dialog open={isInsightModalOpen} onOpenChange={setIsInsightModalOpen} >
         <DialogContent className="max-w-2xl">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
@@ -3853,17 +3907,17 @@ export function AdvancedReports({ className }: AdvancedReportsProps) {
                   <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
                     <h4 className="font-medium text-green-900 mb-1">Immediate Actions</h4>
                     <ul className="text-sm text-green-800 space-y-1">
-                      <li>• Schedule follow-up appointment within 7 days</li>
-                      <li>• Order additional liver function tests</li>
-                      <li>• Consider ultrasound imaging</li>
+                      <li>â€¢ Schedule follow-up appointment within 7 days</li>
+                      <li>â€¢ Order additional liver function tests</li>
+                      <li>â€¢ Consider ultrasound imaging</li>
                     </ul>
                   </div>
                   <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
                     <h4 className="font-medium text-blue-900 mb-1">Preventive Measures</h4>
                     <ul className="text-sm text-blue-800 space-y-1">
-                      <li>• Lifestyle counseling (diet, exercise)</li>
-                      <li>• Monitor medication compliance</li>
-                      <li>• Regular health screenings</li>
+                      <li>â€¢ Lifestyle counseling (diet, exercise)</li>
+                      <li>â€¢ Monitor medication compliance</li>
+                      <li>â€¢ Regular health screenings</li>
                     </ul>
                   </div>
                 </div>
@@ -3939,10 +3993,11 @@ export function AdvancedReports({ className }: AdvancedReportsProps) {
             </Button>
           </div>
         </DialogContent>
-      </Dialog>
+      </Dialog >
 
       {/* Add/Edit Task Dialog */}
-      <Dialog open={isTaskDialogOpen || isEditTaskDialogOpen} onOpenChange={(open) => {
+      < Dialog open={isTaskDialogOpen || isEditTaskDialogOpen
+      } onOpenChange={(open) => {
         if (!open) {
           setIsTaskDialogOpen(false)
           setIsEditTaskDialogOpen(false)
@@ -3975,7 +4030,7 @@ export function AdvancedReports({ className }: AdvancedReportsProps) {
                 <Input
                   id="task-title"
                   value={newTask.title}
-                  onChange={(e) => setNewTask({...newTask, title: e.target.value})}
+                  onChange={(e) => setNewTask({ ...newTask, title: e.target.value })}
                   placeholder="Enter task title"
                   required
                 />
@@ -3983,7 +4038,7 @@ export function AdvancedReports({ className }: AdvancedReportsProps) {
 
               <div className="space-y-2">
                 <Label htmlFor="task-priority">Priority</Label>
-                <Select value={newTask.priority} onValueChange={(value: 'high' | 'medium' | 'low') => setNewTask({...newTask, priority: value})}>
+                <Select value={newTask.priority} onValueChange={(value: 'high' | 'medium' | 'low') => setNewTask({ ...newTask, priority: value })}>
                   <SelectTrigger>
                     <SelectValue placeholder="Select priority" />
                   </SelectTrigger>
@@ -4001,7 +4056,7 @@ export function AdvancedReports({ className }: AdvancedReportsProps) {
               <Textarea
                 id="task-description"
                 value={newTask.description}
-                onChange={(e) => setNewTask({...newTask, description: e.target.value})}
+                onChange={(e) => setNewTask({ ...newTask, description: e.target.value })}
                 placeholder="Enter task description..."
                 rows={3}
               />
@@ -4012,7 +4067,7 @@ export function AdvancedReports({ className }: AdvancedReportsProps) {
               <Select value={newTask.patientId} onValueChange={(value) => {
                 const patient = patients.find(p => p.patient_id === value)
                 if (patient) {
-                  setNewTask({...newTask, patientId: patient.patient_id, patientName: patient.name})
+                  setNewTask({ ...newTask, patientId: patient.patient_id, patientName: patient.name })
                 }
               }}>
                 <SelectTrigger>
@@ -4042,7 +4097,7 @@ export function AdvancedReports({ className }: AdvancedReportsProps) {
                 id="task-due-date"
                 type="datetime-local"
                 value={newTask.dueDate}
-                onChange={(e) => setNewTask({...newTask, dueDate: e.target.value})}
+                onChange={(e) => setNewTask({ ...newTask, dueDate: e.target.value })}
                 required
               />
             </div>
@@ -4076,10 +4131,10 @@ export function AdvancedReports({ className }: AdvancedReportsProps) {
             </Button>
           </div>
         </DialogContent>
-      </Dialog>
+      </Dialog >
 
       {/* Add Appointment Dialog */}
-      <Dialog open={isAppointmentDialogOpen} onOpenChange={setIsAppointmentDialogOpen}>
+      < Dialog open={isAppointmentDialogOpen} onOpenChange={setIsAppointmentDialogOpen} >
         <DialogContent className="max-w-2xl">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
@@ -4119,7 +4174,7 @@ export function AdvancedReports({ className }: AdvancedReportsProps) {
 
               <div className="space-y-2">
                 <Label htmlFor="appointment-type">Appointment Type *</Label>
-                <Select value={newAppointment.type} onValueChange={(value) => setNewAppointment({...newAppointment, type: value})}>
+                <Select value={newAppointment.type} onValueChange={(value) => setNewAppointment({ ...newAppointment, type: value })}>
                   <SelectTrigger>
                     <SelectValue placeholder="Select type" />
                   </SelectTrigger>
@@ -4142,7 +4197,7 @@ export function AdvancedReports({ className }: AdvancedReportsProps) {
                   id="appointment-datetime"
                   type="datetime-local"
                   value={newAppointment.dateTime}
-                  onChange={(e) => setNewAppointment({...newAppointment, dateTime: e.target.value})}
+                  onChange={(e) => setNewAppointment({ ...newAppointment, dateTime: e.target.value })}
                   required
                 />
               </div>
@@ -4156,7 +4211,7 @@ export function AdvancedReports({ className }: AdvancedReportsProps) {
                   max="480"
                   step="15"
                   value={newAppointment.duration}
-                  onChange={(e) => setNewAppointment({...newAppointment, duration: parseInt(e.target.value) || 30})}
+                  onChange={(e) => setNewAppointment({ ...newAppointment, duration: parseInt(e.target.value) || 30 })}
                 />
               </div>
             </div>
@@ -4167,7 +4222,7 @@ export function AdvancedReports({ className }: AdvancedReportsProps) {
                 id="appointment-location"
                 placeholder="Room number or location"
                 value={newAppointment.location}
-                onChange={(e) => setNewAppointment({...newAppointment, location: e.target.value})}
+                onChange={(e) => setNewAppointment({ ...newAppointment, location: e.target.value })}
               />
             </div>
 
@@ -4177,7 +4232,7 @@ export function AdvancedReports({ className }: AdvancedReportsProps) {
                 id="appointment-notes"
                 placeholder="Additional notes or special instructions..."
                 value={newAppointment.notes}
-                onChange={(e) => setNewAppointment({...newAppointment, notes: e.target.value})}
+                onChange={(e) => setNewAppointment({ ...newAppointment, notes: e.target.value })}
                 rows={3}
               />
             </div>
@@ -4230,10 +4285,10 @@ export function AdvancedReports({ className }: AdvancedReportsProps) {
             </Button>
           </div>
         </DialogContent>
-      </Dialog>
+      </Dialog >
 
       {/* Reschedule Appointment Dialog */}
-      <Dialog open={isRescheduleDialogOpen} onOpenChange={setIsRescheduleDialogOpen}>
+      < Dialog open={isRescheduleDialogOpen} onOpenChange={setIsRescheduleDialogOpen} >
         <DialogContent className="max-w-2xl">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
@@ -4260,7 +4315,7 @@ export function AdvancedReports({ className }: AdvancedReportsProps) {
                   <Label htmlFor="reschedule-type">Appointment Type</Label>
                   <Select
                     value={rescheduleAppointmentData.type}
-                    onValueChange={(value) => setRescheduleAppointmentData({...rescheduleAppointmentData, type: value})}
+                    onValueChange={(value) => setRescheduleAppointmentData({ ...rescheduleAppointmentData, type: value })}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Select type" />
@@ -4285,7 +4340,7 @@ export function AdvancedReports({ className }: AdvancedReportsProps) {
                     max="480"
                     step="15"
                     value={rescheduleAppointmentData.duration}
-                    onChange={(e) => setRescheduleAppointmentData({...rescheduleAppointmentData, duration: parseInt(e.target.value) || 30})}
+                    onChange={(e) => setRescheduleAppointmentData({ ...rescheduleAppointmentData, duration: parseInt(e.target.value) || 30 })}
                   />
                 </div>
 
@@ -4293,7 +4348,7 @@ export function AdvancedReports({ className }: AdvancedReportsProps) {
                   <Label htmlFor="reschedule-status">Status</Label>
                   <Select
                     value={rescheduleAppointmentData.status}
-                    onValueChange={(value: 'scheduled' | 'confirmed' | 'cancelled') => setRescheduleAppointmentData({...rescheduleAppointmentData, status: value})}
+                    onValueChange={(value: 'scheduled' | 'confirmed' | 'cancelled') => setRescheduleAppointmentData({ ...rescheduleAppointmentData, status: value })}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Select status" />
@@ -4313,7 +4368,7 @@ export function AdvancedReports({ className }: AdvancedReportsProps) {
                   id="reschedule-datetime"
                   type="datetime-local"
                   value={rescheduleAppointmentData.dateTime}
-                  onChange={(e) => setRescheduleAppointmentData({...rescheduleAppointmentData, dateTime: e.target.value})}
+                  onChange={(e) => setRescheduleAppointmentData({ ...rescheduleAppointmentData, dateTime: e.target.value })}
                   required
                 />
               </div>
@@ -4324,7 +4379,7 @@ export function AdvancedReports({ className }: AdvancedReportsProps) {
                   id="reschedule-location"
                   placeholder="Room number or location"
                   value={rescheduleAppointmentData.location}
-                  onChange={(e) => setRescheduleAppointmentData({...rescheduleAppointmentData, location: e.target.value})}
+                  onChange={(e) => setRescheduleAppointmentData({ ...rescheduleAppointmentData, location: e.target.value })}
                 />
               </div>
 
@@ -4334,7 +4389,7 @@ export function AdvancedReports({ className }: AdvancedReportsProps) {
                   id="reschedule-notes"
                   placeholder="Additional notes or special instructions..."
                   value={rescheduleAppointmentData.notes}
-                  onChange={(e) => setRescheduleAppointmentData({...rescheduleAppointmentData, notes: e.target.value})}
+                  onChange={(e) => setRescheduleAppointmentData({ ...rescheduleAppointmentData, notes: e.target.value })}
                   rows={3}
                 />
               </div>
@@ -4362,10 +4417,10 @@ export function AdvancedReports({ className }: AdvancedReportsProps) {
             </Button>
           </div>
         </DialogContent>
-      </Dialog>
+      </Dialog >
 
       {/* Case Details Dialog */}
-      <Dialog open={isCaseDetailsDialogOpen} onOpenChange={setIsCaseDetailsDialogOpen}>
+      < Dialog open={isCaseDetailsDialogOpen} onOpenChange={setIsCaseDetailsDialogOpen} >
         <DialogContent className="max-w-2xl">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
@@ -4387,12 +4442,11 @@ export function AdvancedReports({ className }: AdvancedReportsProps) {
                   <div><strong>ID:</strong> {selectedCase.patientId}</div>
                   <div><strong>Diagnosis:</strong> {selectedCase.diagnosis}</div>
                   <div><strong>Status:</strong>
-                    <Badge variant="outline" className={`ml-2 ${
-                      selectedCase.status === 'critical' ? 'border-red-200 text-red-800' :
+                    <Badge variant="outline" className={`ml-2 ${selectedCase.status === 'critical' ? 'border-red-200 text-red-800' :
                       selectedCase.status === 'active' ? 'border-blue-200 text-blue-800' :
-                      selectedCase.status === 'recovery' ? 'border-green-200 text-green-800' :
-                      'border-yellow-200 text-yellow-800'
-                    }`}>
+                        selectedCase.status === 'recovery' ? 'border-green-200 text-green-800' :
+                          'border-yellow-200 text-yellow-800'
+                      }`}>
                       {selectedCase.status.replace('_', ' ').toUpperCase()}
                     </Badge>
                   </div>
@@ -4459,10 +4513,10 @@ export function AdvancedReports({ className }: AdvancedReportsProps) {
             </Button>
           </div>
         </DialogContent>
-      </Dialog>
+      </Dialog >
 
       {/* Update Progress Dialog */}
-      <Dialog open={isUpdateProgressDialogOpen} onOpenChange={setIsUpdateProgressDialogOpen}>
+      < Dialog open={isUpdateProgressDialogOpen} onOpenChange={setIsUpdateProgressDialogOpen} >
         <DialogContent className="max-w-lg">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
@@ -4481,7 +4535,7 @@ export function AdvancedReports({ className }: AdvancedReportsProps) {
                 <Select
                   value={progressUpdate.status}
                   onValueChange={(value: 'active' | 'critical' | 'recovery' | 'pending_review' | 'finished') =>
-                    setProgressUpdate({...progressUpdate, status: value})
+                    setProgressUpdate({ ...progressUpdate, status: value })
                   }
                 >
                   <SelectTrigger>
@@ -4503,7 +4557,7 @@ export function AdvancedReports({ className }: AdvancedReportsProps) {
                   id="assigned-doctor"
                   placeholder="Dr. Full Name"
                   value={progressUpdate.doctor}
-                  onChange={(e) => setProgressUpdate({...progressUpdate, doctor: e.target.value})}
+                  onChange={(e) => setProgressUpdate({ ...progressUpdate, doctor: e.target.value })}
                 />
               </div>
             </div>
@@ -4517,7 +4571,7 @@ export function AdvancedReports({ className }: AdvancedReportsProps) {
                   min="0"
                   max="100"
                   value={progressUpdate.progress}
-                  onChange={(e) => setProgressUpdate({...progressUpdate, progress: parseInt(e.target.value)})}
+                  onChange={(e) => setProgressUpdate({ ...progressUpdate, progress: parseInt(e.target.value) })}
                   className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
                 />
                 <div className="flex justify-between text-xs text-gray-500 mt-1">
@@ -4537,7 +4591,7 @@ export function AdvancedReports({ className }: AdvancedReportsProps) {
                     variant="ghost"
                     size="sm"
                     className="h-6 px-2 text-xs text-red-500 hover:text-red-700"
-                    onClick={() => setProgressUpdate({...progressUpdate, notes: ''})}
+                    onClick={() => setProgressUpdate({ ...progressUpdate, notes: '' })}
                   >
                     Clear Notes
                   </Button>
@@ -4547,7 +4601,7 @@ export function AdvancedReports({ className }: AdvancedReportsProps) {
                 id="progress-notes"
                 placeholder="Add notes about this case update... (leave empty to remove existing notes)"
                 value={progressUpdate.notes}
-                onChange={(e) => setProgressUpdate({...progressUpdate, notes: e.target.value})}
+                onChange={(e) => setProgressUpdate({ ...progressUpdate, notes: e.target.value })}
                 rows={3}
               />
               {progressUpdate.notes === '' && (
@@ -4575,10 +4629,10 @@ export function AdvancedReports({ className }: AdvancedReportsProps) {
             </Button>
           </div>
         </DialogContent>
-      </Dialog>
+      </Dialog >
 
       {/* Analysis Detail Dialog */}
-      <Dialog open={!!selectedDetail} onOpenChange={() => setSelectedDetail(null)}>
+      < Dialog open={!!selectedDetail} onOpenChange={() => setSelectedDetail(null)}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
@@ -4623,13 +4677,13 @@ export function AdvancedReports({ className }: AdvancedReportsProps) {
 
               {selectedDetail.type === 'hepatitis' && (() => {
                 const riskLevel = selectedDetail.data.risk_level || 'low';
-                
+
                 const getHepatitisRiskColor = (level: string) => {
                   if (level === 'critical') return "bg-red-100 text-red-800 border-red-200";
                   if (level === 'high') return "bg-yellow-100 text-yellow-800 border-yellow-200";
                   return "bg-green-100 text-green-800 border-green-200";
                 };
-                
+
                 const getHepatitisRiskIconColor = (level: string) => {
                   if (level === 'critical') return "text-red-600";
                   if (level === 'high') return "text-yellow-600";
@@ -4649,8 +4703,8 @@ export function AdvancedReports({ className }: AdvancedReportsProps) {
                         <div className="flex items-center gap-3">
                           <div className={`flex h-6 w-6 items-center justify-center rounded-lg ${getHepatitisRiskColor(riskLevel)}`}>
                             {riskLevel === 'critical' ? <AlertCircle className="h-4 w-4 text-red-600" /> :
-                             riskLevel === 'high' ? <AlertCircle className="h-4 w-4 text-yellow-600" /> :
-                             <CheckCircle2 className="h-4 w-4 text-green-600" />}
+                              riskLevel === 'high' ? <AlertCircle className="h-4 w-4 text-yellow-600" /> :
+                                <CheckCircle2 className="h-4 w-4 text-green-600" />}
                           </div>
                           <div>
                             <p className="font-semibold text-sm">Stage {selectedDetail.data.stage ?? 0} ({selectedDetail.data.stage_description || 'Unknown'})</p>
@@ -4703,9 +4757,9 @@ export function AdvancedReports({ className }: AdvancedReportsProps) {
                       <div className="flex items-center gap-3">
                         <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-background/50">
                           {selectedDetail.data.risk_percentage <= 10 ? <CheckCircle2 className="h-4 w-4 text-green-600" /> :
-                           selectedDetail.data.risk_percentage <= 40 ? <AlertCircle className="h-4 w-4 text-yellow-600" /> :
-                           selectedDetail.data.risk_percentage <= 50 ? <AlertCircle className="h-4 w-4 text-orange-600" /> :
-                           <AlertCircle className="h-4 w-4 text-red-600" />}
+                            selectedDetail.data.risk_percentage <= 40 ? <AlertCircle className="h-4 w-4 text-yellow-600" /> :
+                              selectedDetail.data.risk_percentage <= 50 ? <AlertCircle className="h-4 w-4 text-orange-600" /> :
+                                <AlertCircle className="h-4 w-4 text-red-600" />}
                         </div>
                         <div>
                           <p className="font-semibold text-sm">Risk Level: {selectedDetail.data.risk_percentage?.toFixed(1) ?? 0}%</p>
@@ -4714,9 +4768,9 @@ export function AdvancedReports({ className }: AdvancedReportsProps) {
                       </div>
                       <Badge variant="outline" className={
                         selectedDetail.data.risk_percentage <= 10 ? "bg-green-100 text-green-800 border-green-200" :
-                        selectedDetail.data.risk_percentage <= 40 ? "bg-yellow-100 text-yellow-800 border-yellow-200" :
-                        selectedDetail.data.risk_percentage <= 50 ? "bg-orange-100 text-orange-800 border-orange-200" :
-                        "bg-red-100 text-red-800 border-red-200"
+                          selectedDetail.data.risk_percentage <= 40 ? "bg-yellow-100 text-yellow-800 border-yellow-200" :
+                            selectedDetail.data.risk_percentage <= 50 ? "bg-orange-100 text-orange-800 border-orange-200" :
+                              "bg-red-100 text-red-800 border-red-200"
                       } style={{ fontWeight: 'bold', fontSize: '12px' }}>
                         {selectedDetail.data.risk_percentage?.toFixed(1) ?? 0}%
                       </Badge>
@@ -4766,7 +4820,7 @@ export function AdvancedReports({ className }: AdvancedReportsProps) {
             </Button>
           </div>
         </DialogContent>
-      </Dialog>
-    </div>
+      </Dialog >
+    </div >
   )
 }

@@ -1,22 +1,24 @@
 import { type NextRequest, NextResponse } from "next/server"
+import { headers } from "next/headers"
 
 const BACKEND_URL = process.env.BACKEND_URL || "http://localhost:8000"
 
+async function getAuthHeaders() {
+  const h = await headers()
+  const cookie = h.get("cookie") || ""
+  return { "Content-Type": "application/json", cookie }
+}
+
 export async function POST(request: NextRequest) {
   try {
-    // Transparent proxy: forward JSON directly to backend
     const jsonData = await request.json()
 
-    // Forward the request to the Python backend as JSON
     const backendResponse = await fetch(`${BACKEND_URL}/analyze`, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
+      headers: await getAuthHeaders(),
       body: JSON.stringify(jsonData),
     })
 
-    // Forward exact backend response (including error status codes)
     if (!backendResponse.ok) {
       const errorText = await backendResponse.text()
       let errorMessage = errorText

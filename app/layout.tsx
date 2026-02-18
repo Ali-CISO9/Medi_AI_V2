@@ -4,6 +4,7 @@ import { Analytics } from '@vercel/analytics/next'
 import { Toaster } from '@/components/ui/sonner'
 import { LanguageProvider } from '@/lib/language-context'
 import { AnalysisProvider, PatientProvider } from '@/lib/analysis-context'
+import { AuthProvider } from '@/lib/auth-context'
 import './globals.css'
 
 const nunito = Nunito({
@@ -36,12 +37,14 @@ export default function RootLayout({
       </head>
       <body className={`font-sans ${nunito.variable}`}>
         <LanguageProvider>
-          <PatientProvider>
-            <AnalysisProvider>
-              {children}
-              <Toaster />
-            </AnalysisProvider>
-          </PatientProvider>
+          <AuthProvider>
+            <PatientProvider>
+              <AnalysisProvider>
+                {children}
+                <Toaster />
+              </AnalysisProvider>
+            </PatientProvider>
+          </AuthProvider>
         </LanguageProvider>
         <Analytics />
       </body>

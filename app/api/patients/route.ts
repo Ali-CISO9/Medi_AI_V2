@@ -1,18 +1,26 @@
 import { NextResponse } from "next/server"
+import { headers } from "next/headers"
 
-const BACKEND_URL = process.env.BACKEND_URL || "http://localhost:8001"
+const BACKEND_URL = process.env.BACKEND_URL || "http://localhost:8000"
+
+async function getAuthHeaders() {
+  const h = await headers()
+  const cookie = h.get("cookie") || ""
+  return { "Content-Type": "application/json", cookie }
+}
 
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url)
     const status = searchParams.get('status') || 'active'
+    const patientId = searchParams.get('patient_id')
 
-    // Forward to Python backend with status parameter
-    const backendResponse = await fetch(`${BACKEND_URL}/patients?status=${status}`, {
+    let url = `${BACKEND_URL}/patients?status=${status}`
+    if (patientId) url += `&patient_id=${patientId}`
+
+    const backendResponse = await fetch(url, {
       method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-      },
+      headers: await getAuthHeaders(),
     })
 
     if (!backendResponse.ok) {
@@ -32,19 +40,15 @@ export async function POST(request: Request) {
   try {
     const body = await request.json()
 
-    // Forward to Python backend
     const backendResponse = await fetch(`${BACKEND_URL}/patients`, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
+      headers: await getAuthHeaders(),
       body: JSON.stringify(body),
     })
 
     const data = await backendResponse.json()
 
     if (!backendResponse.ok) {
-      // Forward the specific error message from backend
       return NextResponse.json({ error: data.detail || "Failed to process patient data" }, { status: backendResponse.status })
     }
 
