@@ -1102,6 +1102,7 @@ async def admin_update_user(
     }
 
 
+
 @app.delete("/admin/users/{user_id}")
 async def admin_deactivate_user(
     user_id: int,
@@ -1124,6 +1125,38 @@ async def admin_deactivate_user(
               resource_id=user.id, ip_address=client_ip)
 
     return {"success": True, "message": f"User {user.username} deactivated"}
+
+
+@app.delete("/admin/users/{user_id}/permanent")
+async def admin_delete_user_permanent(
+    user_id: int,
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: User = require_permission("can_manage_users"),
+):
+    """Permanently delete a user (and unassign their patients/reports)."""
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    if user.id == current_user.id:
+        raise HTTPException(status_code=400, detail="Cannot delete your own account")
+
+    # 1. Unassign Patients
+    db.query(Patient).filter(Patient.doctor_id == user.id).update({"doctor_id": None})
+    
+    # 2. Unassign Medical Reports
+    db.query(MedicalReport).filter(MedicalReport.doctor_id == user.id).update({"doctor_id": None})
+
+    # 3. Create Audit Log (BEFORE deleting user, so we log WHO did it)
+    client_ip = request.client.host if request.client else None
+    log_audit(db, current_user.id, "DELETE_USER_PERMANENT", resource="users",
+              resource_id=user.id, details=f"Deleted user {user.username}", ip_address=client_ip)
+    
+    # 4. Delete the User
+    db.delete(user)
+    db.commit()
+
+    return {"success": True, "message": f"User {user.username} permanently deleted. Patients unassigned."}
 
 
 @app.get("/admin/stats")

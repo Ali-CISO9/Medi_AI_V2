@@ -34,6 +34,7 @@ import {
     Check,
     Eye,
     EyeOff,
+    Trash2,
 } from "lucide-react"
 import { toast } from "sonner"
 
@@ -259,6 +260,7 @@ function OverviewTab() {
 // Users Tab
 // ─────────────────────────────────────────────────────────
 function UsersTab() {
+    const { user: currentUser } = useAuth()
     const [users, setUsers] = useState<AdminUser[]>([])
     const [loading, setLoading] = useState(true)
     const [editingUser, setEditingUser] = useState<AdminUser | null>(null)
@@ -291,6 +293,25 @@ function UsersTab() {
             }
         } catch {
             toast.error("Failed to deactivate user")
+        }
+    }
+
+    const handleDelete = async (userId: number) => {
+        if (!confirm("Are you sure you want to PERMANENTLY delete this user? assignments to this user (patients, reports) will be unassigned but NOT deleted.")) {
+            return
+        }
+
+        try {
+            const r = await apiFetch(`/admin/users/${userId}/permanent`, { method: "DELETE" })
+            const d = await r.json()
+            if (d.success) {
+                toast.success(d.message)
+                fetchUsers()
+            } else {
+                toast.error(d.detail || "Failed to delete user")
+            }
+        } catch {
+            toast.error("Failed to delete user")
         }
     }
 
@@ -346,10 +367,18 @@ function UsersTab() {
                                             <Button size="sm" variant="ghost" onClick={() => setEditingUser(u)} title="Edit">
                                                 <Pencil className="h-3.5 w-3.5" />
                                             </Button>
-                                            {u.isActive && (
-                                                <Button size="sm" variant="ghost" className="text-red-500 hover:text-red-700" onClick={() => handleDeactivate(u.id)} title="Deactivate">
-                                                    <Ban className="h-3.5 w-3.5" />
-                                                </Button>
+                                            {/* Hide actions for admin or self */}
+                                            {u.username !== "admin" && u.id !== currentUser?.id && (
+                                                <>
+                                                    {u.isActive && (
+                                                        <Button size="sm" variant="ghost" className="text-orange-500 hover:text-orange-700" onClick={() => handleDeactivate(u.id)} title="Deactivate">
+                                                            <Ban className="h-3.5 w-3.5" />
+                                                        </Button>
+                                                    )}
+                                                    <Button size="sm" variant="ghost" className="text-red-500 hover:text-red-700" onClick={() => handleDelete(u.id)} title="Delete Permanently">
+                                                        <Trash2 className="h-3.5 w-3.5" />
+                                                    </Button>
+                                                </>
                                             )}
                                         </div>
                                     </td>
