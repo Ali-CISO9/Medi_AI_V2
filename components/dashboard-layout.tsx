@@ -2,9 +2,8 @@
 
 import type React from "react"
 import { useState } from "react"
-import { useRouter } from "next/navigation"
 
-import { Scan, User, ChevronDown, Settings, LogOut, Shield } from "lucide-react"
+import { Scan, User, ChevronDown, LogOut } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,
@@ -19,8 +18,7 @@ import { useAuth } from "@/lib/auth-context"
 export function DashboardLayout({ children }: { children: React.ReactNode }) {
   const [isProfileOpen, setIsProfileOpen] = useState(false)
   const { t } = useLanguage()
-  const router = useRouter()
-  const { user, logout, hasPermission } = useAuth()
+  const { user, logout } = useAuth()
 
   const handleLogout = async () => {
     await logout()
@@ -70,19 +68,6 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
                 <p className="text-xs text-muted-foreground">{displayRole}</p>
               </div>
               <DropdownMenuSeparator />
-              {hasPermission("can_access_admin") && (
-                <DropdownMenuItem
-                  className="cursor-pointer hover-lift"
-                  onClick={() => router.push("/admin")}
-                >
-                  <Shield className="mr-2 h-4 w-4" />
-                  <span>Admin Panel</span>
-                </DropdownMenuItem>
-              )}
-              <DropdownMenuItem className="cursor-pointer hover-lift">
-                <Settings className="mr-2 h-4 w-4" />
-                <span>{t('accountSettings')}</span>
-              </DropdownMenuItem>
               <DropdownMenuItem
                 className="cursor-pointer hover-lift text-red-600 focus:text-red-600"
                 onClick={handleLogout}

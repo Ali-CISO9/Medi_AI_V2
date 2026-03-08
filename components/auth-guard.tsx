@@ -18,6 +18,7 @@ interface AuthGuardProps {
  */
 export function AuthGuard({ children, redirectToLogin = true }: AuthGuardProps) {
     const { user, isLoading } = useAuth()
+    console.log("[GUARD] isLoading:", isLoading, "user:", !!user)
     const redirecting = useRef(false)
 
     useEffect(() => {
@@ -27,22 +28,7 @@ export function AuthGuard({ children, redirectToLogin = true }: AuthGuardProps) 
         }
     }, [isLoading, user, redirectToLogin])
 
-    // Safety Timeout: If loading takes > 3 seconds, force navigation based on storage
-    useEffect(() => {
-        if (isLoading) {
-            const timer = setTimeout(() => {
-                const hasSession = localStorage.getItem("user_session_active")
-                if (hasSession) {
-                    // We have a marker, assume we are logged in -> Force Dashboard
-                    window.location.href = "/"
-                } else {
-                    // No marker -> Force Login
-                    window.location.href = "/login"
-                }
-            }, 3000)
-            return () => clearTimeout(timer)
-        }
-    }, [isLoading])
+
 
     if (isLoading || (!user && redirectToLogin)) {
         return (

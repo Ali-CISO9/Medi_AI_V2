@@ -110,7 +110,7 @@ export function MobileNav() {
                 aria-label={`${t('navigateTo' as any)} ${item.title}`}
               >
                 <item.icon className="h-4 w-4 shrink-0" />
-                <span className="truncate">{t(item.title.toLowerCase().replace(' ', ''))}</span>
+                <span className="truncate">{t(item.title.toLowerCase().replace(' ', '') as any)}</span>
               </Button>
             ))}
           </nav>

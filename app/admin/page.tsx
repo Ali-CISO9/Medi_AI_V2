@@ -162,29 +162,29 @@ function AdminPageContent() {
 
                 <Tabs defaultValue="overview" className="flex-1 flex flex-col">
                     <TabsList className="grid w-full grid-cols-4 rounded-2xl bg-white/60 backdrop-blur-xl border border-white/30 p-1.5 shadow-lg">
-                        <TabsTrigger value="overview" className="rounded-xl flex items-center gap-1.5 text-xs px-3 py-2.5 data-[state=active]:bg-gradient-to-br data-[state=active]:from-blue-500 data-[state=active]:to-indigo-600 data-[state=active]:text-white data-[state=active]:shadow-lg transition-all">
+                        <TabsTrigger value="overview" className="rounded-xl flex items-center gap-1.5 text-xs px-3 py-2.5 data-[state=active]:bg-gradient-to-br data-[state=active]:from-blue-500 data-[state=active]:to-indigo-600 data-[state=active]:text-white data-[state=active]:shadow-lg transition-all duration-300 ease-in-out hover:scale-105">
                             <BarChart3 className="h-3.5 w-3.5" />
                             <span className="hidden sm:inline font-medium">Overview</span>
                         </TabsTrigger>
-                        <TabsTrigger value="users" className="rounded-xl flex items-center gap-1.5 text-xs px-3 py-2.5 data-[state=active]:bg-gradient-to-br data-[state=active]:from-emerald-500 data-[state=active]:to-green-600 data-[state=active]:text-white data-[state=active]:shadow-lg transition-all">
+                        <TabsTrigger value="users" className="rounded-xl flex items-center gap-1.5 text-xs px-3 py-2.5 data-[state=active]:bg-gradient-to-br data-[state=active]:from-emerald-500 data-[state=active]:to-green-600 data-[state=active]:text-white data-[state=active]:shadow-lg transition-all duration-300 ease-in-out hover:scale-105">
                             <Users className="h-3.5 w-3.5" />
                             <span className="hidden sm:inline font-medium">User Management</span>
                         </TabsTrigger>
-                        <TabsTrigger value="patients" className="rounded-xl flex items-center gap-1.5 text-xs px-3 py-2.5 data-[state=active]:bg-gradient-to-br data-[state=active]:from-cyan-500 data-[state=active]:to-teal-600 data-[state=active]:text-white data-[state=active]:shadow-lg transition-all">
+                        <TabsTrigger value="patients" className="rounded-xl flex items-center gap-1.5 text-xs px-3 py-2.5 data-[state=active]:bg-gradient-to-br data-[state=active]:from-cyan-500 data-[state=active]:to-teal-600 data-[state=active]:text-white data-[state=active]:shadow-lg transition-all duration-300 ease-in-out hover:scale-105">
                             <Stethoscope className="h-3.5 w-3.5" />
                             <span className="hidden sm:inline font-medium">Patients</span>
                         </TabsTrigger>
-                        <TabsTrigger value="audit" className="rounded-xl flex items-center gap-1.5 text-xs px-3 py-2.5 data-[state=active]:bg-gradient-to-br data-[state=active]:from-purple-500 data-[state=active]:to-violet-600 data-[state=active]:text-white data-[state=active]:shadow-lg transition-all">
+                        <TabsTrigger value="audit" className="rounded-xl flex items-center gap-1.5 text-xs px-3 py-2.5 data-[state=active]:bg-gradient-to-br data-[state=active]:from-purple-500 data-[state=active]:to-violet-600 data-[state=active]:text-white data-[state=active]:shadow-lg transition-all duration-300 ease-in-out hover:scale-105">
                             <ClipboardList className="h-3.5 w-3.5" />
                             <span className="hidden sm:inline font-medium">Audit Logs</span>
                         </TabsTrigger>
                     </TabsList>
 
                     <div className="flex-1 mt-4">
-                        <TabsContent value="overview"><OverviewTab /></TabsContent>
-                        <TabsContent value="users"><UsersTab /></TabsContent>
-                        <TabsContent value="patients"><PatientsTab /></TabsContent>
-                        <TabsContent value="audit"><AuditTab /></TabsContent>
+                        <TabsContent value="overview" className="animate-in fade-in slide-in-from-bottom-2 duration-300"><OverviewTab /></TabsContent>
+                        <TabsContent value="users" className="animate-in fade-in slide-in-from-bottom-2 duration-300"><UsersTab /></TabsContent>
+                        <TabsContent value="patients" className="animate-in fade-in slide-in-from-bottom-2 duration-300"><PatientsTab /></TabsContent>
+                        <TabsContent value="audit" className="animate-in fade-in slide-in-from-bottom-2 duration-300"><AuditTab /></TabsContent>
                     </div>
                 </Tabs>
             </div>
@@ -432,6 +432,7 @@ function UserFormModal({ mode, user, onClose, onSuccess }: UserFormModalProps) {
     const [perms, setPerms] = useState<Record<string, boolean>>(user?.permissions || getDefaultPerms())
     const [saving, setSaving] = useState(false)
     const [presets, setPresets] = useState<Record<string, Record<string, boolean>> | null>(null)
+    const [emailError, setEmailError] = useState("")
 
     // Fetch presets
     useEffect(() => {
@@ -472,12 +473,32 @@ function UserFormModal({ mode, user, onClose, onSuccess }: UserFormModalProps) {
         setPerms(p)
     }
 
+    // Validate email format - must be username@medi.com
+    const validateEmail = (email: string): boolean => {
+        const emailRegex = /^[a-zA-Z0-9._%+-]+@medi\.com$/;
+        return emailRegex.test(email);
+    }
+
+    const handleEmailChange = (value: string) => {
+        setEmail(value);
+        if (value && !validateEmail(value)) {
+            setEmailError("Email must be in format: username@medi.com");
+        } else {
+            setEmailError("");
+        }
+    }
+
     const handleSubmit = async () => {
         setSaving(true)
         try {
             if (mode === "create") {
                 if (!username || !email || !password) {
                     toast.error("Username, email and password are required")
+                    return
+                }
+                // Validate email format
+                if (!validateEmail(email)) {
+                    toast.error("Email must be in format: username@medi.com")
                     return
                 }
                 const r = await apiFetch("/auth/register", {
@@ -536,7 +557,8 @@ function UserFormModal({ mode, user, onClose, onSuccess }: UserFormModalProps) {
                         </div>
                         <div className="space-y-1.5">
                             <Label htmlFor="edit-email" className="text-xs font-medium">Email</Label>
-                            <Input id="edit-email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="h-9 bg-white/50" />
+                            <Input id="edit-email" type="email" value={email} onChange={(e) => handleEmailChange(e.target.value)} className="h-9 bg-white/50" />
+                            {emailError && <p className="text-xs text-red-500 mt-1">{emailError}</p>}
                         </div>
                         <div className="space-y-1.5">
                             <Label htmlFor="edit-fullname" className="text-xs font-medium">Full Name</Label>
@@ -760,7 +782,7 @@ function PatientsTab() {
             const pData = await pRes.json()
             const uData = await uRes.json()
             if (pData.success) setPatients(pData.patients)
-            if (uData.success) setDoctors(uData.users.filter((u: AdminUser) => u.isActive))
+            if (uData.success) setDoctors(uData.users.filter((u: AdminUser) => u.isActive && u.role === "doctor"))
         } catch {
             toast.error("Failed to load data")
         } finally {

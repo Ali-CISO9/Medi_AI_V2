@@ -39,6 +39,7 @@ import html2canvas from 'html2canvas'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, PieChart as RechartsPieChart, Cell, Area, AreaChart, Pie } from 'recharts'
 import { toast } from 'sonner'
 import { usePatients } from "@/lib/analysis-context"
+import { useAuth } from "@/lib/auth-context"
 
 // Sample data for reports
 const patientReportsData = [
@@ -84,6 +85,14 @@ interface PatientAnalysis {
 }
 
 export function AdvancedReports({ className }: AdvancedReportsProps) {
+  // Get the current logged in user
+  const { user, isLoading } = useAuth()
+
+  // If still loading or no user, don't render anything (prevents issues during logout/loading)
+  if (isLoading || !user) {
+    return null
+  }
+
   // Use the patient context for shared state management
   const {
     patients,
@@ -583,48 +592,16 @@ export function AdvancedReports({ className }: AdvancedReportsProps) {
           diagnosis: diagnosis,
           status: caseStatus,
           lastUpdate: new Date(analysis.updated_at || analysis.created_at || Date.now()),
-          treatmentProgress: Math.min(100, Math.max(0, analysis.confidence + Math.random() * 20 - 10)), // Mock progress
+          treatmentProgress: Math.round(Math.min(100, Math.max(0, analysis.confidence + Math.random() * 20 - 10))), // Mock progress
           nextAppointment: new Date(Date.now() + (Math.random() * 7 + 1) * 24 * 60 * 60 * 1000), // 1-8 days from now
-          assignedDoctor: patient?.doctor_name || 'Dr. Assigned',
+          assignedDoctor: user?.fullName || user?.username || 'Dr. Assigned',
           alerts: alerts,
           profilePicture: patient?.profile_picture,
           notes: '' // Initialize with empty notes
         }
       })
 
-      // Check if we have saved cases in localStorage and merge with fresh cases
-      const savedCases = localStorage.getItem('activeCases')
-      let finalCases = casesFromAnalyses
-
-      if (savedCases) {
-        try {
-          const parsedCases = JSON.parse(savedCases)
-          // For each fresh case, check if we have additional data in saved cases (like user modifications)
-          finalCases = casesFromAnalyses.map(freshCase => {
-            const savedCase = parsedCases.find((sc: any) => sc.id === freshCase.id)
-            if (savedCase) {
-              // Merge fresh data with saved user modifications (like status changes)
-              return {
-                ...freshCase,
-                status: savedCase.status || freshCase.status,
-                treatmentProgress: savedCase.treatmentProgress || freshCase.treatmentProgress,
-                assignedDoctor: savedCase.assignedDoctor || freshCase.assignedDoctor,
-                alerts: savedCase.alerts || freshCase.alerts,
-                lastUpdate: new Date(savedCase.lastUpdate) || freshCase.lastUpdate,
-                nextAppointment: savedCase.nextAppointment ? new Date(savedCase.nextAppointment) : freshCase.nextAppointment,
-                notes: savedCase.notes || freshCase.notes // Preserve saved notes
-              }
-            }
-            return freshCase
-          })
-        } catch (error) {
-          console.error('Error parsing saved cases:', error)
-        }
-      }
-
-      setActiveCases(finalCases)
-      // Save merged cases to localStorage
-      localStorage.setItem('activeCases', JSON.stringify(finalCases))
+      setActiveCases(casesFromAnalyses)
     }
   }, [patientAnalyses, patients])
 
@@ -682,7 +659,11 @@ export function AdvancedReports({ className }: AdvancedReportsProps) {
         }
       ]
       setPendingTasks(sampleTasks)
-      localStorage.setItem('pendingTasks', JSON.stringify(sampleTasks))
+      try {
+        localStorage.setItem('pendingTasks', JSON.stringify(sampleTasks))
+      } catch (e) {
+        console.warn('Failed to save pending tasks:', e)
+      }
     }
 
     // Check for saved appointments
@@ -736,21 +717,24 @@ export function AdvancedReports({ className }: AdvancedReportsProps) {
         }
       ]
       setUpcomingAppointments(sampleAppointments)
-      localStorage.setItem('upcomingAppointments', JSON.stringify(sampleAppointments))
+      try {
+        localStorage.setItem('upcomingAppointments', JSON.stringify(sampleAppointments))
+      } catch (e) {
+        console.warn('Failed to save appointments:', e)
+      }
     }
   }, [])
 
-  // Save active cases to localStorage whenever they change
-  useEffect(() => {
-    if (activeCases.length > 0) {
-      localStorage.setItem('activeCases', JSON.stringify(activeCases))
-    }
-  }, [activeCases])
+  // activeCases is derived from database data - no localStorage needed
 
   // Save appointments to localStorage whenever they change
   useEffect(() => {
     if (upcomingAppointments.length > 0) {
-      localStorage.setItem('upcomingAppointments', JSON.stringify(upcomingAppointments))
+      try {
+        localStorage.setItem('upcomingAppointments', JSON.stringify(upcomingAppointments))
+      } catch (e) {
+        console.warn('Failed to save appointments:', e)
+      }
     }
   }, [upcomingAppointments])
 
@@ -773,7 +757,11 @@ export function AdvancedReports({ className }: AdvancedReportsProps) {
     setPendingTasks(prev => {
       const updatedTasks = [...prev, task]
       // Update localStorage immediately
-      localStorage.setItem('pendingTasks', JSON.stringify(updatedTasks))
+      try {
+        localStorage.setItem('pendingTasks', JSON.stringify(updatedTasks))
+      } catch (e) {
+        console.warn('Failed to save pendingTasks:', e)
+      }
       return updatedTasks
     })
     setNewTask({
@@ -794,7 +782,11 @@ export function AdvancedReports({ className }: AdvancedReportsProps) {
         task.id === taskId ? { ...task, completed: !task.completed } : task
       )
       // Update localStorage immediately
-      localStorage.setItem('pendingTasks', JSON.stringify(updatedTasks))
+      try {
+        localStorage.setItem('pendingTasks', JSON.stringify(updatedTasks))
+      } catch (e) {
+        console.warn('Failed to save pendingTasks:', e)
+      }
       return updatedTasks
     })
   }
@@ -803,7 +795,11 @@ export function AdvancedReports({ className }: AdvancedReportsProps) {
     setPendingTasks(prev => {
       const updatedTasks = prev.filter(task => task.id !== taskId)
       // Update localStorage immediately
-      localStorage.setItem('pendingTasks', JSON.stringify(updatedTasks))
+      try {
+        localStorage.setItem('pendingTasks', JSON.stringify(updatedTasks))
+      } catch (e) {
+        console.warn('Failed to save pendingTasks:', e)
+      }
       return updatedTasks
     })
     toast.success('Task deleted successfully')
@@ -867,7 +863,7 @@ export function AdvancedReports({ className }: AdvancedReportsProps) {
   const updateCaseProgress = (case_: any) => {
     setProgressUpdate({
       caseId: case_.id,
-      progress: case_.treatmentProgress,
+      progress: Math.round(case_.treatmentProgress),
       status: case_.status,
       doctor: case_.assignedDoctor,
       notes: ''
@@ -879,11 +875,7 @@ export function AdvancedReports({ className }: AdvancedReportsProps) {
     if (!confirm('Are you sure you want to delete this case? This action cannot be undone.')) {
       return
     }
-    setActiveCases(prev => {
-      const updatedCases = prev.filter(case_ => case_.id !== caseId);
-      localStorage.setItem('activeCases', JSON.stringify(updatedCases));
-      return updatedCases;
-    });
+    setActiveCases(prev => prev.filter(case_ => case_.id !== caseId));
     toast.success('Case deleted successfully')
   }
 
@@ -934,7 +926,11 @@ export function AdvancedReports({ className }: AdvancedReportsProps) {
     setUpcomingAppointments(prev => {
       const updatedAppointments = prev.filter(apt => apt.id !== appointmentId)
       // Update localStorage immediately
-      localStorage.setItem('upcomingAppointments', JSON.stringify(updatedAppointments))
+      try {
+        localStorage.setItem('upcomingAppointments', JSON.stringify(updatedAppointments))
+      } catch (e) {
+        console.warn('Failed to save upcomingAppointments:', e)
+      }
       return updatedAppointments
     })
     toast.success('Appointment cancelled successfully')
@@ -1166,13 +1162,7 @@ export function AdvancedReports({ className }: AdvancedReportsProps) {
           : case_
       ))
 
-      // Update localStorage for active cases
-      const updatedCases = activeCases.map(case_ =>
-        case_.patientId === oldPatientIdDisplay
-          ? { ...case_, patientId: newPatientId, patientName: newPatientName }
-          : case_
-      )
-      localStorage.setItem('activeCases', JSON.stringify(updatedCases))
+
 
       setEditingAnalysis(null)
       setIsEditDialogOpen(false)
@@ -1224,16 +1214,18 @@ export function AdvancedReports({ className }: AdvancedReportsProps) {
           return updatedTasks
         })
 
-        // Update localStorage for cases and appointments
-        const updatedCases = activeCases.filter(case_ => case_.id !== caseIdToRemove)
-        localStorage.setItem('activeCases', JSON.stringify(updatedCases))
+
 
         const updatedAppointments = upcomingAppointments.map(appointment =>
           appointment.patientId === analysis.patient_id_display
             ? { ...appointment, status: 'cancelled' as const }
             : appointment
         )
-        localStorage.setItem('upcomingAppointments', JSON.stringify(updatedAppointments))
+        try {
+          localStorage.setItem('upcomingAppointments', JSON.stringify(updatedAppointments))
+        } catch (e) {
+          console.warn('localStorage quota exceeded, skipping cache update')
+        }
 
         toast.success('Patient archived successfully. Patient moved to Medical Records.')
       } else {
@@ -2493,28 +2485,28 @@ export function AdvancedReports({ className }: AdvancedReportsProps) {
                     className="w-full justify-start bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-200 hover:from-blue-100 hover:to-indigo-100 hover:border-blue-300 hover:shadow-lg transform hover:scale-102 transition-all duration-300 ease-in-out"
                     onClick={() => openReferenceModal('lab-values')}
                   >
-                    ðŸ“š Normal Lab Values Reference
+                    Normal Lab Values Reference
                   </Button>
                   <Button
                     variant="outline"
                     className="w-full justify-start bg-gradient-to-r from-green-50 to-emerald-50 border-green-200 hover:from-green-100 hover:to-emerald-100 hover:border-green-300 hover:shadow-lg transform hover:scale-102 transition-all duration-300 ease-in-out"
                     onClick={() => openReferenceModal('drug-dosage')}
                   >
-                    ðŸ’Š Drug Dosage Guidelines
+                    Drug Dosage Guidelines
                   </Button>
                   <Button
                     variant="outline"
                     className="w-full justify-start bg-gradient-to-r from-red-50 to-pink-50 border-red-200 hover:from-red-100 hover:to-pink-100 hover:border-red-300 hover:shadow-lg transform hover:scale-102 transition-all duration-300 ease-in-out"
                     onClick={() => openReferenceModal('vital-signs')}
                   >
-                    ðŸ©º Vital Signs Reference
+                    Vital Signs Reference
                   </Button>
                   <Button
                     variant="outline"
                     className="w-full justify-start bg-gradient-to-r from-purple-50 to-violet-50 border-purple-200 hover:from-purple-100 hover:to-violet-100 hover:border-purple-300 hover:shadow-lg transform hover:scale-102 transition-all duration-300 ease-in-out"
                     onClick={() => openReferenceModal('abbreviations')}
                   >
-                    ðŸ¥ Medical Abbreviations
+                    Medical Abbreviations
                   </Button>
                 </div>
               </CardContent>
@@ -3540,10 +3532,10 @@ export function AdvancedReports({ className }: AdvancedReportsProps) {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <FileText className="h-5 w-5" />
-              {selectedReference === 'lab-values' && '📚 Normal Laboratory Values Reference'}
-              {selectedReference === 'drug-dosage' && '💊 Drug Dosage Guidelines'}
-              {selectedReference === 'vital-signs' && '🩺 Vital Signs Reference'}
-              {selectedReference === 'abbreviations' && '🏥 Medical Abbreviations'}
+              {selectedReference === 'lab-values' && 'Normal Laboratory Values Reference'}
+              {selectedReference === 'drug-dosage' && 'Drug Dosage Guidelines'}
+              {selectedReference === 'vital-signs' && 'Vital Signs Reference'}
+              {selectedReference === 'abbreviations' && 'Medical Abbreviations'}
             </DialogTitle>
             <DialogDescription>
               Educational reference guide for healthcare professionals
@@ -3614,30 +3606,30 @@ export function AdvancedReports({ className }: AdvancedReportsProps) {
                     <div className="border-l-4 border-green-500 pl-4">
                       <h4 className="font-semibold text-green-800">Acetaminophen (Tylenol)</h4>
                       <ul className="text-sm text-green-700 mt-1 space-y-1">
-                        <li>â€¢ Adults: 325-650 mg every 4-6 hours (max 3g/day)</li>
-                        <li>â€¢ Children: 10-15 mg/kg every 4-6 hours</li>
-                        <li>â€¢ Maximum daily dose: 75 mg/kg or 3g (whichever is less)</li>
+                        <li>Adults: 325-650 mg every 4-6 hours (max 3g/day)</li>
+                        <li>Children: 10-15 mg/kg every 4-6 hours</li>
+                        <li>Maximum daily dose: 75 mg/kg or 3g (whichever is less)</li>
                       </ul>
                     </div>
                     <div className="border-l-4 border-green-500 pl-4">
                       <h4 className="font-semibold text-green-800">Ibuprofen (Advil/Motrin)</h4>
                       <ul className="text-sm text-green-700 mt-1 space-y-1">
-                        <li>â€¢ Adults: 200-400 mg every 4-6 hours (max 1.2g/day)</li>
-                        <li>â€¢ Children: 5-10 mg/kg every 6-8 hours</li>
-                        <li>â€¢ Maximum daily dose: 40 mg/kg</li>
+                        <li>Adults: 200-400 mg every 4-6 hours (max 1.2g/day)</li>
+                        <li>Children: 5-10 mg/kg every 6-8 hours</li>
+                        <li>Maximum daily dose: 40 mg/kg</li>
                       </ul>
                     </div>
                     <div className="border-l-4 border-green-500 pl-4">
                       <h4 className="font-semibold text-green-800">Amoxicillin</h4>
                       <ul className="text-sm text-green-700 mt-1 space-y-1">
-                        <li>â€¢ Adults: 500 mg every 8 hours or 875 mg every 12 hours</li>
-                        <li>â€¢ Children: 20-40 mg/kg/day divided every 8 hours</li>
-                        <li>â€¢ Duration: 7-10 days for most infections</li>
+                        <li>Adults: 500 mg every 8 hours or 875 mg every 12 hours</li>
+                        <li>Children: 20-40 mg/kg/day divided every 8 hours</li>
+                        <li>Duration: 7-10 days for most infections</li>
                       </ul>
                     </div>
                   </div>
                   <div className="mt-4 p-3 bg-yellow-100 rounded text-sm text-yellow-800">
-                    <strong>âš ï¸ Important:</strong> Dosages should be adjusted for renal/hepatic impairment, age, and weight. Always double-check calculations and consult drug references for contraindications.
+                    <strong> Important:</strong> Dosages should be adjusted for renal/hepatic impairment, age, and weight. Always double-check calculations and consult drug references for contraindications.
                   </div>
                 </div>
               </div>
@@ -3666,7 +3658,7 @@ export function AdvancedReports({ className }: AdvancedReportsProps) {
                         </div>
                         <div className="flex justify-between">
                           <span>Stage 2 Hypertension:</span>
-                          <span className="font-medium">â‰¥140/â‰¥90 mmHg</span>
+                          <span className="font-medium">140/90 mmHg</span>
                         </div>
                       </div>
                     </div>
@@ -3714,15 +3706,15 @@ export function AdvancedReports({ className }: AdvancedReportsProps) {
                       <div className="space-y-2 text-sm">
                         <div className="flex justify-between">
                           <span>Normal (oral):</span>
-                          <span className="font-medium">36.5-37.5Â°C (97.7-99.5Â°F)</span>
+                          <span className="font-medium">36.5-37.5°C (97.7-99.5°F)</span>
                         </div>
                         <div className="flex justify-between">
                           <span>Fever:</span>
-                          <span className="font-medium">&gt;38.0Â°C (&gt;100.4Â°F)</span>
+                          <span className="font-medium">&gt;38.0°C (&gt;100.4°F)</span>
                         </div>
                         <div className="flex justify-between">
                           <span>Hypothermia:</span>
-                          <span className="font-medium">&lt;35.0Â°C (&lt;95.0Â°F)</span>
+                          <span className="font-medium">&lt;35.0°C (&lt;95.0°F)</span>
                         </div>
                       </div>
                     </div>
@@ -3838,7 +3830,7 @@ export function AdvancedReports({ className }: AdvancedReportsProps) {
                     </div>
                   </div>
                   <div className="mt-4 p-3 bg-blue-100 rounded text-sm text-blue-800">
-                    <strong>ðŸ’¡ Tip:</strong> Always write abbreviations in full first, then use the abbreviation in parentheses. Avoid non-standard abbreviations to prevent miscommunication.
+                    <strong>Tip:</strong> Always write abbreviations in full first, then use the abbreviation in parentheses. Avoid non-standard abbreviations to prevent miscommunication.
                   </div>
                 </div>
               </div>
@@ -4466,7 +4458,7 @@ export function AdvancedReports({ className }: AdvancedReportsProps) {
                   <div className="w-full bg-gray-200 rounded-full h-3">
                     <div
                       className="bg-blue-600 h-3 rounded-full transition-all duration-300"
-                      style={{ width: `${selectedCase.treatmentProgress}%` }}
+                      style={{ width: `${Math.round(selectedCase.treatmentProgress)}%` }}
                     ></div>
                   </div>
                 </div>

@@ -39,6 +39,8 @@ export function PatientManagement() {
   })
   const [isLoading, setIsLoading] = useState(false)
   const { t } = useLanguage()
+  const [emailError, setEmailError] = useState("")
+  const [phoneError, setPhoneError] = useState("")
 
   // Fetch patients from backend
   useEffect(() => {
@@ -61,9 +63,53 @@ export function PatientManagement() {
     }
   }
 
+  // Validate email format - must be @gmail.com
+  const validateEmail = (email: string): boolean => {
+    if (!email) return true; // Empty is OK
+    const emailRegex = /^[a-zA-Z0-9._%+-]+@gmail\.com$/;
+    return emailRegex.test(email);
+  }
+
+  // Validate phone format - must be 2222 333 4543 (4 digits, space, 3 digits, space, 4 digits)
+  const validatePhone = (phone: string): boolean => {
+    if (!phone) return true; // Empty is OK
+    const phoneRegex = /^\d{4}\s\d{3}\s\d{4}$/;
+    return phoneRegex.test(phone);
+  }
+
+  const handleEmailChange = (value: string) => {
+    setFormData({ ...formData, email: value });
+    if (value && !validateEmail(value)) {
+      setEmailError("Email must be @gmail.com format");
+    } else {
+      setEmailError("");
+    }
+  }
+
+  const handlePhoneChange = (value: string) => {
+    setFormData({ ...formData, phone: value });
+    if (value && !validatePhone(value)) {
+      setPhoneError("Phone must be in format: 2222 333 4543");
+    } else {
+      setPhoneError("");
+    }
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsLoading(true)
+
+    // Validate email and phone before submitting
+    if (formData.email && !validateEmail(formData.email)) {
+      setEmailError("Email must be @gmail.com format")
+      setIsLoading(false)
+      return
+    }
+    if (formData.phone && !validatePhone(formData.phone)) {
+      setPhoneError("Phone must be in format: 2222 333 4543")
+      setIsLoading(false)
+      return
+    }
 
     try {
       const patientData = {
@@ -210,16 +256,20 @@ export function PatientManagement() {
                     id="email"
                     type="email"
                     value={formData.email}
-                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                    onChange={(e) => handleEmailChange(e.target.value)}
+                    placeholder="patient@gmail.com"
                   />
+                  {emailError && <p className="text-xs text-red-500 mt-1">{emailError}</p>}
                 </div>
                 <div>
                   <Label htmlFor="phone">Phone</Label>
                   <Input
                     id="phone"
                     value={formData.phone}
-                    onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                    onChange={(e) => handlePhoneChange(e.target.value)}
+                    placeholder="2222 333 4543"
                   />
+                  {phoneError && <p className="text-xs text-red-500 mt-1">{phoneError}</p>}
                 </div>
                 <div>
                   <Label htmlFor="department">Department</Label>

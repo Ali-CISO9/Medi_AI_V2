@@ -14,8 +14,12 @@ print(f"Loaded DATABASE_URL: {DATABASE_URL}")
 # Create SQLAlchemy engine
 engine = create_engine(
     DATABASE_URL,
-    pool_pre_ping=True,  # Verify connections before use
-    echo=False  # Set to True for SQL query logging in development
+    pool_pre_ping=True,
+    pool_size=10,
+    max_overflow=20,
+    pool_timeout=10,
+    pool_recycle=300,
+    echo=False
 )
 
 # Enable foreign key enforcement for SQLite

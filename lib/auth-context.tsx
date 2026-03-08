@@ -1,6 +1,6 @@
 "use client"
 
-import React, { createContext, useContext, useEffect, useState, useCallback } from "react"
+import React, { createContext, useContext, useEffect, useState, useCallback, useRef } from "react"
 
 // ─────────────────────────────────────────────────────────
 // Types
@@ -48,9 +48,15 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined)
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const setIsLoadingDebug = (val: boolean, source: string) => {
+    console.log(`[AUTH] setIsLoading(${val}) called from: ${source}`)
+    setIsLoading(val)
+  }
 
   // Fetch current user from /auth/me (cookie is sent automatically)
   const refreshUser = useCallback(async () => {
+    console.log("[AUTH] refreshUser called, hasInitialized:", hasInitialized.current)
+    setIsLoadingDebug(true, "refreshUser-start")
     try {
       const controller = new AbortController()
       const timeout = setTimeout(() => controller.abort(), 5000)
@@ -59,23 +65,33 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         signal: controller.signal,
       })
       clearTimeout(timeout)
-      if (res.ok) {
-        const data = await res.json()
-        setUser(data)
-      } else {
+
+      if (res.status === 401) {
         setUser(null)
+        return
       }
-    } catch {
+
+      if (!res.ok) throw new Error("Failed to fetch user")
+
+      const data = await res.json()
+      setUser(data)
+    } catch (err) {
+      console.error("refreshUser error:", err)
       setUser(null)
     } finally {
-      setIsLoading(false)
+      setIsLoadingDebug(false, "refreshUser-finally")
     }
   }, [])
 
   // On mount, try to restore session
+  const hasInitialized = useRef(false)
+
   useEffect(() => {
+    if (hasInitialized.current) return
+    hasInitialized.current = true
     refreshUser()
-  }, [refreshUser])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   // Login
   const login = useCallback(
@@ -94,10 +110,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       const data = await res.json()
 
-      // 1. Save marker to storage BEFORE state update
+      // 1. Save marker to storage BEFORE navigation
       localStorage.setItem("user_session_active", "true")
 
-      // 2. Force hard redirect to clear memory/state - ATOMIC NAVIGATION (No setUser)
+      // 2. ATOMIC NAVIGATION: No setUser() call - just redirect
+      // The hard reload will force the App to re-mount and read from storage
       const isAdmin = data.user?.permissions?.can_access_admin
       window.location.href = isAdmin ? "/admin" : "/"
     },
@@ -106,7 +123,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   // Logout
   const logout = useCallback(async () => {
-    // 1. Clear storage immediately
+    // 1. Clear storage immediately - SYNCHRONOUS
     localStorage.removeItem("user_session_active")
 
     try {
@@ -114,12 +131,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         method: "POST",
         credentials: "include",
       })
-    } catch {
-      // silently ignore logout failures
+    } catch (err) {
+      console.error("logout error:", err)
+    } finally {
+      // 2. ATOMIC NAVIGATION: No setUser(null) - just redirect
+      window.location.href = "/login"
     }
-
-    // 2. Force hard refresh to login - ATOMIC NAVIGATION (No setUser)
-    window.location.href = "/login"
   }, [])
 
   // Permission check

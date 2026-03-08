@@ -43,6 +43,40 @@ export function AiAnalysisResult() {
     analysisTime: new Date().toTimeString().split(' ')[0].substring(0, 5)
   })
   const [isSaving, setIsSaving] = useState(false)
+  const [emailError, setEmailError] = useState('')
+  const [phoneError, setPhoneError] = useState('')
+
+  // Validate email format - must be @gmail.com
+  const validateEmail = (email: string): boolean => {
+    if (!email) return true; // Empty is OK
+    const emailRegex = /^[a-zA-Z0-9._%+-]+@gmail\.com$/;
+    return emailRegex.test(email);
+  }
+
+  // Validate phone format - must be 2222 333 4543 (4 digits, space, 3 digits, space, 4 digits)
+  const validatePhone = (phone: string): boolean => {
+    if (!phone) return true; // Empty is OK
+    const phoneRegex = /^\d{4}\s\d{3}\s\d{4}$/;
+    return phoneRegex.test(phone);
+  }
+
+  const handleEmailChange = (value: string) => {
+    setPatientInfo({ ...patientInfo, email: value });
+    if (value && !validateEmail(value)) {
+      setEmailError("Email must be @gmail.com format");
+    } else {
+      setEmailError("");
+    }
+  }
+
+  const handlePhoneChange = (value: string) => {
+    setPatientInfo({ ...patientInfo, phone: value });
+    if (value && !validatePhone(value)) {
+      setPhoneError("Phone must be in format: 2222 333 4543");
+    } else {
+      setPhoneError("");
+    }
+  }
 
   // Reset patient form when result changes (new analysis)
   useEffect(() => {
@@ -143,6 +177,16 @@ export function AiAnalysisResult() {
       toast.error("Patient Information Required", {
         description: "Please fill in at least the patient name and patient ID.",
       })
+      return
+    }
+
+    // Validate email and phone format
+    if (patientInfo.email && !validateEmail(patientInfo.email)) {
+      setEmailError("Email must be @gmail.com format")
+      return
+    }
+    if (patientInfo.phone && !validatePhone(patientInfo.phone)) {
+      setPhoneError("Phone must be in format: 2222 333 4543")
       return
     }
 
@@ -642,10 +686,11 @@ export function AiAnalysisResult() {
                         id="email"
                         type="email"
                         value={patientInfo.email}
-                        onChange={(e) => setPatientInfo({ ...patientInfo, email: e.target.value })}
-                        placeholder="patient@example.com"
+                        onChange={(e) => handleEmailChange(e.target.value)}
+                        placeholder="patient@gmail.com"
                         autoComplete="off"
                       />
+                      {emailError && <p className="text-xs text-red-500 mt-1">{emailError}</p>}
                     </div>
 
                     <div className="space-y-2">
@@ -654,10 +699,11 @@ export function AiAnalysisResult() {
                         id="phone"
                         type="tel"
                         value={patientInfo.phone}
-                        onChange={(e) => setPatientInfo({ ...patientInfo, phone: e.target.value })}
-                        placeholder="+1 (555) 123-4567"
+                        onChange={(e) => handlePhoneChange(e.target.value)}
+                        placeholder="2222 333 4543"
                         autoComplete="off"
                       />
+                      {phoneError && <p className="text-xs text-red-500 mt-1">{phoneError}</p>}
                     </div>
 
 
