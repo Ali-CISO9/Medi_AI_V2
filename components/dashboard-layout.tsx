@@ -32,19 +32,19 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-gray-100 to-gray-200 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
       {/* Header */}
-      <header className="border-b border-border/50 gradient-bg px-4 md:px-6 py-3 md:py-4">
+      <header className="border-b border-border/50 gradient-bg px-4 md:px-6 py-4 md:py-6 min-h-[80px] md:min-h-[100px]">
         <div className="flex items-center justify-between">
           {/* Logo and Welcome Message */}
-          <div className="flex items-center gap-2 md:gap-4">
-            <div className="flex items-center gap-2">
-              <div className="flex h-8 w-8 md:h-10 md:w-10 items-center justify-center rounded-xl gradient-primary animate-glow">
-                <Scan className="h-5 w-5 md:h-6 md:w-6 text-primary-foreground" />
+          <div className="flex items-center gap-4 md:gap-6">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 md:h-12 md:w-12 items-center justify-center rounded-xl gradient-primary animate-glow">
+                <Scan className="h-6 w-6 md:h-7 md:w-7 text-primary-foreground" />
               </div>
-              <span className="text-lg md:text-xl font-bold gradient-text">{t('mediAI')}</span>
+              <span className="text-xl md:text-2xl font-bold gradient-text">{t('mediAI')}</span>
             </div>
             <div className="hidden lg:flex flex-col">
-              <h1 className="text-base md:text-lg font-bold tracking-tight gradient-text">{t('welcome')}</h1>
-              <p className="text-xs md:text-sm text-muted-foreground">{t('welcomeDesc')}</p>
+              <h1 className="text-lg md:text-xl font-bold tracking-tight gradient-text">{t('welcome')}</h1>
+              <p className="text-sm md:text-base text-muted-foreground">{t('welcomeDesc')}</p>
             </div>
           </div>
 
@@ -52,14 +52,14 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
           <DropdownMenu open={isProfileOpen} onOpenChange={setIsProfileOpen}>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" className="flex items-center gap-2 hover-lift" aria-label="User profile menu">
-                <div className="flex h-7 w-7 md:h-8 md:w-8 items-center justify-center rounded-full gradient-primary animate-glow">
-                  <User className="h-3 w-3 md:h-4 md:w-4 text-primary-foreground" />
+                <div className="flex h-8 w-8 md:h-10 md:w-10 items-center justify-center rounded-full gradient-primary animate-glow">
+                  <User className="h-4 w-4 md:h-5 md:w-5 text-primary-foreground" />
                 </div>
                 <div className="hidden md:flex flex-col items-start">
-                  <span className="text-sm font-medium text-foreground">{displayName}</span>
-                  <span className="text-xs text-muted-foreground">{displayRole}</span>
+                  <span className="text-sm md:text-base font-medium text-foreground">{displayName}</span>
+                  <span className="text-xs md:text-sm text-muted-foreground">{displayRole}</span>
                 </div>
-                <ChevronDown className="h-3 w-3 md:h-4 md:w-4 text-muted-foreground" />
+                <ChevronDown className="h-4 w-4 md:h-5 md:w-5 text-muted-foreground" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-56 gradient-card border-border/50">

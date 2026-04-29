@@ -64,7 +64,7 @@ export default function LoginPage() {
                             <div className="gradient-primary rounded-xl p-2.5 shadow-lg animate-glow">
                                 <Heart className="h-6 w-6 text-white" />
                             </div>
-                            <h1 className="text-2xl font-bold gradient-text">MediAI</h1>
+                            <h1 className="text-2xl font-bold gradient-text">Hepatiq</h1>
                         </div>
                         <p className="text-sm text-muted-foreground text-center">
                             Secure access to the medical analysis platform

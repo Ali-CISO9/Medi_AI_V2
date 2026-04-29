@@ -13,9 +13,9 @@ const nunito = Nunito({
 })
 
 export const metadata: Metadata = {
-  title: 'MediAI',
+  title: 'Hepatiq',
   description: 'Transform Your Medical Journey',
-  generator: 'MediAI',
+  generator: 'Hepatiq',
 }
 
 export default function RootLayout({

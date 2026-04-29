@@ -120,7 +120,7 @@ def upgrade() -> None:
             "VALUES (:username, :email, :hashed_password, :full_name, :role, :is_active, :permissions)"
         ).bindparams(
             username="admin",
-            email="admin@mediai.local",
+            email="admin@hepatiq.local",
             hashed_password=admin_hash,
             full_name="System Administrator",
             role="admin",

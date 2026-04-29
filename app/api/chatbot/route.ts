@@ -65,7 +65,7 @@ Respond professionally and helpfully to liver-related medical questions.`
       try {
         chatCompletion = await groq.chat.completions.create({
           messages: messages,
-          model: "moonshotai/kimi-k2-instruct-0905",
+          model: "llama-3.3-70b-versatile",
         });
         break;
       } catch (error: any) {

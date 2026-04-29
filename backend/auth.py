@@ -1,5 +1,5 @@
 """
-Authentication & Authorization module for MediAI.
+Authentication & Authorization module for Hepatiq.
 
 - bcrypt password hashing (12 rounds)
 - Stateless JWT via HttpOnly cookies
